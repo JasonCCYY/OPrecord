@@ -50,7 +50,11 @@ const APP = {
     else if (tab === 'material') this.switchMat(this.subMat);
     else if (tab === 'clinic')   this.switchCli(this.subCli);
 
+    // FAB only for surgery
     document.getElementById('fab').style.display = this.tab === 'surgery' ? 'flex' : 'none';
+    // Header + button for selfPay and opCode
+    const hdrAdd = document.getElementById('hdr-add-btn');
+    if(hdrAdd) hdrAdd.style.display = 'none';
   },
 
   bindSubTabs() {
@@ -66,6 +70,9 @@ const APP = {
     document.getElementById(map[sub])?.classList.add('active');
     const load = { matRec: ()=>this.loadMatRec(), selfPay: ()=>this.loadSelfPay(), opCode: ()=>this.loadOpCode(), codeRec: ()=>this.loadCodeRec(), estimate: ()=>this.loadEstimate() };
     load[sub]?.();
+    // Show header + button for selfPay and opCode
+    const hdrAdd = document.getElementById('hdr-add-btn');
+    if(hdrAdd) hdrAdd.style.display = ['selfPay','opCode'].includes(sub) ? 'flex' : 'none';
   },
 
   switchCli(sub) {
@@ -77,10 +84,12 @@ const APP = {
   },
 
   fabClick() {
-    if (this.tab === 'surgery')  this.openModal('modal-op');
+    if (this.tab === 'surgery') this.openModal('modal-op');
     else if (this.tab === 'material') {
-      if (this.subMat === 'matRec')  this.openModal('modal-mat');
+      if (this.subMat === 'matRec')   this.openModal('modal-mat');
       else if (this.subMat === 'codeRec') this.openModal('modal-code');
+      else if (this.subMat === 'selfPay') this.toast('💡 請在 Google Sheet 新增自費醫材');
+      else if (this.subMat === 'opCode')  this.toast('💡 請在 Google Sheet 新增代碼');
     } else if (this.tab === 'clinic') this.openModal('modal-cli');
   },
 
@@ -99,14 +108,20 @@ const APP = {
         return d.substring(0,7);
       };
 
-      // Sort: by month desc, then 中正 before 右昌, then date desc
+      // Parse date to comparable number: 2026/5/29 -> 20260529
+      const dateNum = d => {
+        const p = d.split('/');
+        if(p.length>=3) return parseInt(p[0])*10000 + parseInt(p[1])*100 + parseInt(p[2]);
+        return 0;
+      };
+      // Sort: month desc → 中正 before 右昌 → date desc (within same month+area)
       const sorted = [...recs].sort((a,b) => {
         const ma = getMonth(a.date), mb = getMonth(b.date);
-        if(ma !== mb) return mb.localeCompare(ma);
+        if(ma !== mb) return mb.localeCompare(ma);          // month desc
         const aZ = a.area==='中正'?0:a.area==='右昌'?1:2;
         const bZ = b.area==='中正'?0:b.area==='右昌'?1:2;
-        if(aZ !== bZ) return aZ-bZ;
-        return b.date.localeCompare(a.date);
+        if(aZ !== bZ) return aZ-bZ;                         // 中正 first
+        return dateNum(b.date) - dateNum(a.date);            // date desc (later first)
       });
 
       let html = '<div class="sx-wrap"><table class="sx-table"><thead><tr><th>日期</th><th>院區</th><th>姓名</th><th>類型</th><th>名稱</th><th>部位</th><th>骨材</th><th>備註</th></tr></thead><tbody>';
@@ -221,9 +236,9 @@ const APP = {
             <div class="swipe-content">
               <div class="item-brand">${r.brand}</div>
               <div class="item-product">${r.product}</div>
+              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddMat('${safeB}','${safeP2}','${cleanP}')" title="新增到骨材記錄">＋</button>
               <div class="item-price">$${priceStr}</div>
               <div style="width:36px;text-align:right;font-size:.72rem;color:var(--muted);flex-shrink:0">${r.hospital}</div>
-              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddMat('${safeB}','${safeP2}','${cleanP}')" title="新增到骨材記錄">＋</button>
             </div>
             <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteSelfPay(${r._row})">刪除</div>
           </div>`;
@@ -264,8 +279,8 @@ const APP = {
             <div class="swipe-content">
               <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem;width:52px">${r.code}</div>
               <div class="item-product">${r.name}</div>
-              <div class="item-price">${cleanP?'$'+cleanP.toLocaleString():''}</div>
               <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddCode('${safeN}','${safeC}','${safeP}','${safeA}')" title="新增到代碼紀錄">＋</button>
+              <div class="item-price">${cleanP?'$'+cleanP.toLocaleString():''}</div>
             </div>
             <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteOpCode(${r._row})">刪除</div>
           </div>`;
