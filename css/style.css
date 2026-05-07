@@ -105,6 +105,8 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .list-content{flex:1;overflow:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;display:block}
 .list-group-hdr{padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--txt2);background:var(--bg);border-bottom:1px solid var(--border)}
 .sticky-hdr{position:sticky;top:0;z-index:8;width:100%}
+/* Per-group header that sticks below col-hdr-row (~36px tall) */
+.list-month-hdr{padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--txt2);background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:36px;z-index:7;width:100%}
 .list-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface);gap:10px;cursor:pointer;min-width:max-content;width:100%}
 .list-row:active{background:var(--card)}
 .row-new{border-left:3px solid var(--amber);background:linear-gradient(to right,rgba(245,158,11,.06),var(--surface))}
@@ -120,8 +122,8 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .col-date   {width:44px;font-size:.78rem;color:var(--txt2);flex-shrink:0;font-family:'JetBrains Mono',monospace}
 
 /* New-dot indicator */
-.new-dot{flex-shrink:0;width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px rgba(245,158,11,.25);margin-right:2px}
-.dot-ph {flex-shrink:0;width:9px;height:9px;margin-right:2px}
+.new-dot{flex-shrink:0;width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px rgba(245,158,11,.25)}
+.dot-ph {flex-shrink:0;width:9px;height:9px}
 
 /* Sub-total */
 .sub-total{display:block;font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1px}
@@ -132,6 +134,8 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 
 /* Done button */
 .done-btn{flex-shrink:0;width:30px;height:30px;border:1.5px solid var(--acc-bd);background:var(--acc-lt);color:var(--accent);border-radius:var(--r-sm);cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center}
+/* Done button placeholder — keeps column widths when button is hidden */
+.done-ph{flex-shrink:0;width:30px;height:30px;visibility:hidden}
 .done-btn:active{transform:scale(.9)}
 
 /* ── Estimate ── */
@@ -142,7 +146,7 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .est-total{font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;color:var(--accent);text-align:right}
 .est-val{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--txt2);text-align:right}
 
-/* ── Clinic unified ── */
+  /* ── Clinic unified ── */
 .clinic-section-hdr{padding:10px 14px 7px;font-size:.95rem;font-weight:700;color:var(--txt);background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9}
 
 /* ── Month badge ── */
@@ -215,5 +219,9 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .sub-page{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
 
 /* ── Column header row sticky ── */
-.col-hdr-row{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:2px solid var(--border);display:flex;align-items:center;padding:8px 14px;min-width:max-content;width:100%;flex-shrink:0}
+/* col-hdr-row is now INSIDE list-content scroll container for horizontal sync */
+.col-hdr-row{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:2px solid var(--border);display:flex;align-items:center;padding:8px 14px;gap:10px;min-width:max-content;width:100%;flex-shrink:0}
 .col-hdr-row .th{font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+
+/* Group month header sticks below col-hdr-row; top = col-hdr-row height (~34px) */
+/* Since both are in same scroll container, group headers use top:0 and rely on stacking order */
