@@ -459,22 +459,34 @@ const APP = {
     const opNames = (this.opCats || [])
       .filter(c => c.type === type)
       .map(c => c.name);
-    opSel.innerHTML = '<option value="">選擇名稱</option>' +
+    opSel.innerHTML = '<option value="">選擇手術名稱</option>' +
       opNames.map(n => `<option value="${n}">${n}</option>`).join('');
 
     // ── Bone/Implant checkboxes ──
     const boneWrap = document.getElementById('s-implant-wrap');
-    const GROWTH = ['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
-    const bones = (this.boneCats || [])
-      .filter(c => c.type === type)
-      .map(c => c.bone)
-      .concat(GROWTH);
+    const mainBones = (this.boneCats || []).filter(c => c.type === type).map(c => c.bone);
+    // 生長因子 from sheet, fallback to hardcoded
+    const growthBones = (SHEETS._growthFactors && SHEETS._growthFactors.length)
+      ? SHEETS._growthFactors
+      : ['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
 
-    boneWrap.innerHTML = bones.map(b => `
+    let html = '';
+    if (mainBones.length) {
+      html += mainBones.map(b => `
+        <label class="bone-chip">
+          <input type="checkbox" value="${b}" onchange="APP.updateImplantVal()">
+          <span>${b}</span>
+        </label>`).join('');
+    }
+    // Growth factors section
+    html += `<div class="bone-section-label">生長因子</div>`;
+    html += growthBones.map(b => `
       <label class="bone-chip">
         <input type="checkbox" value="${b}" onchange="APP.updateImplantVal()">
         <span>${b}</span>
       </label>`).join('');
+
+    boneWrap.innerHTML = html || '<div style="color:var(--text-muted);font-size:0.8rem">無骨材選項</div>';
     this.updateImplantVal();
   },
 
