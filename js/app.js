@@ -129,20 +129,27 @@ const APP = {
       groups.forEach(([m, rows]) => {
         const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        const sorted = [...rows].sort((a, b) => (a.brand || '').localeCompare(b.brand || '', 'zh-TW'));
-        sorted.forEach(r => {
+        const sorted = [...rows].sort((a, b) => APP.sortBrands(a.brand||'', b.brand||''));
+        sorted.forEach((r, ri) => {
           const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
+          const isDone = r.done && r.done.toString().toLowerCase() === 'true';
           const rowCls = isNew ? 'item-row item-row--new' : 'item-row';
           const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
-          const subtotal = r.price && r.qty && parseInt(r.qty) > 1
-            ? '<span class="item-subtotal">✕' + parseInt(r.qty) + ' =' + (parseFloat(r.price)*parseInt(r.qty)).toLocaleString() + '</span>'
+          const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
+          const subtotal = cleanP && r.qty && parseInt(r.qty) > 1
+            ? '<span class="item-subtotal">✕' + parseInt(r.qty) + ' =' + (cleanP*parseInt(r.qty)).toLocaleString() + '</span>'
             : '';
-          html += `<div class="${rowCls}">
+          const doneBtn = !isDone
+            ? `<button class="done-btn" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>`
+            : '<span style="width:32px;flex-shrink:0"></span>';
+          const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,date:r.date,price:r.price,qty:r.qty,done:r.done,todayNew:r.todayNew}));
+          html += `<div class="${rowCls}" onclick="APP.openMatDetail('${rowData}')">
             ${dot}
             <div class="item-brand">${r.brand}</div>
             <div class="item-product">${r.product}${subtotal}</div>
             <div class="item-qty">${r.qty}</div>
-            <div class="item-price">${r.price ? '$'+Number(r.price).toLocaleString() : ''}</div>
+            <div class="item-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
+            ${doneBtn}
           </div>`;
         });
       });
@@ -161,10 +168,10 @@ const APP = {
       // Group by brand, sorted alphabetically
       const groups = {};
       items.forEach(r => { (groups[r.brand] = groups[r.brand] || []).push(r); });
-      Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0],'zh-TW')).forEach(([brand, rows]) => {
+      Object.entries(groups).sort((a,b) => APP.sortBrands(a[0],b[0])).forEach(([brand, rows]) => {
         html += `<div class="month-hdr">${brand} <span class="month-badge">${rows.length}</span></div>`;
         rows.forEach(r => {
-          const priceStr = r.price ? Number(r.price).toLocaleString() : '-';
+          const priceStr = r.price ? Number(String(r.price).replace(/,/g,"")).toLocaleString() : '-';
           const safeB = (r.brand||'').replace(/'/g,"\'");
           const safeP = (r.product||'').replace(/'/g,"\'");
           const safePrice = r.price || '';
@@ -173,7 +180,7 @@ const APP = {
             <div class="item-product">${r.product}${r.type ? '<br><span style="font-size:.7rem;color:var(--muted)">' + r.type + '</span>' : ''}</div>
             <div class="item-price">$${priceStr}</div>
             <div style="width:40px;text-align:right;font-size:.72rem;color:var(--muted)">${r.hospital}</div>
-            <button class="quick-add-btn" onclick="APP.openQuickAdd('${safeB}','${safeP}','${safePrice}')" title="新增到骨材記錄">
+            <button class="quick-add-btn" onclick="APP.quickAddMat('${safeB}','${safeP}','${safePrice}')" title="新增到骨材記錄">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
             </button>
           </div>`;
@@ -199,7 +206,7 @@ const APP = {
           html += `<div class="item-row">
             <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem">${r.code}</div>
             <div class="item-product">${r.name}</div>
-            <div class="item-price">$${Number(r.price).toLocaleString()}</div>
+            <div class="item-price">$${Number(String(r.price).replace(/,/g,"")).toLocaleString()}</div>
           </div>`;
         });
       });
@@ -217,13 +224,23 @@ const APP = {
       let html = '';
       const groups = this.groupByMonth(recs);
       groups.forEach(([m, rows]) => {
-        const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
+        // Fix: price * qty for total
+        const total = rows.reduce((s, r) => {
+          const p = parseFloat(String(r.price).replace(/,/g,'')) || 0;
+          const q = parseInt(r.qty) || 1;
+          return s + p * q;
+        }, 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
         rows.forEach(r => {
-          html += `<div class="code-row">
+          const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
+          const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
+          const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
+          const rowCls = isNew ? 'code-row code-row--new' : 'code-row';
+          html += `<div class="${rowCls}">
+            ${dot}
             <div class="code-name">${r.name}</div>
             <div class="code-id">${r.code}</div>
-            <div class="code-price">$${Number(r.price).toLocaleString()}</div>
+            <div class="code-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
             <div class="code-qty">${r.qty}</div>
             <div class="code-area">${r.area}</div>
           </div>`;
@@ -242,9 +259,9 @@ const APP = {
       if (!recs.length) { el.innerHTML = this.empty(); return; }
       el.innerHTML = recs.map(r => `<div class="est-row">
         <div class="est-month">${r.month}</div>
-        <div class="est-total">${r.estimate ? Number(r.estimate).toLocaleString() : '-'}</div>
-        <div class="est-val">${r.material ? Number(r.material).toLocaleString() : '-'}</div>
-        <div class="est-val">${r.zhongzheng ? Number(r.zhongzheng).toLocaleString() : '-'}</div>
+        <div class="est-total">${r.estimate ? Number(String(r.estimate).replace(/,/g,"")).toLocaleString() : '-'}</div>
+        <div class="est-val">${r.material ? Number(String(r.material).replace(/,/g,"")).toLocaleString() : '-'}</div>
+        <div class="est-val">${r.zhongzheng ? Number(String(r.zhongzheng).replace(/,/g,"")).toLocaleString() : '-'}</div>
       </div>`).join('');
     } catch(e) { el.innerHTML = this.err(e); }
   },
@@ -259,7 +276,7 @@ const APP = {
       if (!items.length) { el.innerHTML = this.empty(); return; }
       el.innerHTML = items.map(r => `<div class="clinic-item">
         <div class="clinic-name">${r.name}</div>
-        <div class="clinic-price">${r.price ? '$'+Number(r.price).toLocaleString() : '免費'}</div>
+        <div class="clinic-price">${r.price ? '$'+Number(String(r.price).replace(/,/g,"")).toLocaleString() : '免費'}</div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </div>`).join('');
     } catch(e) { el.innerHTML = this.err(e); }
@@ -282,7 +299,7 @@ const APP = {
             <div class="item-brand" style="width:44px;font-size:.74rem">${r.date.substring(5)}</div>
             <div class="item-product">${r.product}</div>
             <div class="item-qty">${r.qty}</div>
-            <div class="item-price">${r.total ? '$'+Number(r.total).toLocaleString() : ''}</div>
+            <div class="item-price">${r.total ? '$'+Number(String(r.total).replace(/,/g,"")).toLocaleString() : ''}</div>
           </div>`;
         });
       });
@@ -412,38 +429,83 @@ const APP = {
     catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
   },
 
-  // ── Quick Add from 自費醫材 ──
-  openQuickAdd(brand, product, price) {
-    document.getElementById('qa-brand').textContent = brand;
-    document.getElementById('qa-product').textContent = product;
-    document.getElementById('qa-price').textContent = price ? '$' + Number(price).toLocaleString() : '無價格';
-    document.getElementById('qa-qty').value = 1;
-    document.getElementById('qa-brand-val').value = brand;
-    document.getElementById('qa-product-val').value = product;
-    document.getElementById('qa-price-val').value = price;
-    document.getElementById('modal-qa').classList.add('open');
+  // ── Mat Record Detail + Edit ──
+  openMatDetail(encoded) {
+    const r = JSON.parse(decodeURIComponent(encoded));
+    this._editRow = r._row;
+    this._editData = r;
+    const cleanP = parseFloat(String(r.price||0).replace(/,/g,'')) || 0;
+    const total = cleanP * (parseInt(r.qty) || 1);
+    document.getElementById('md-brand').textContent   = r.brand;
+    document.getElementById('md-product').textContent = r.product;
+    document.getElementById('md-date').textContent    = r.date;
+    document.getElementById('md-price').textContent   = cleanP ? '$' + cleanP.toLocaleString() : '-';
+    document.getElementById('md-qty').textContent     = r.qty;
+    document.getElementById('md-total').textContent   = total ? '$' + total.toLocaleString() : '-';
+    document.getElementById('md-view').style.display  = '';
+    document.getElementById('md-edit').style.display  = 'none';
+    this.openModal('modal-mat-detail');
   },
 
-  async saveQuickAdd() {
-    const brand   = document.getElementById('qa-brand-val').value;
-    const product = document.getElementById('qa-product-val').value;
-    const price   = document.getElementById('qa-price-val').value;
-    const qty     = parseInt(document.getElementById('qa-qty').value) || 1;
+  openMatEdit() {
+    const r = this._editData;
+    document.getElementById('me-brand').value   = r.brand;
+    document.getElementById('me-product').value = r.product;
+    document.getElementById('me-date').value    = r.date;
+    document.getElementById('me-price').value   = String(r.price||'').replace(/,/g,'');
+    document.getElementById('me-qty').value     = r.qty || 1;
+    document.getElementById('md-view').style.display = 'none';
+    document.getElementById('md-edit').style.display = '';
+  },
+
+  closeMatEdit() {
+    document.getElementById('md-view').style.display = '';
+    document.getElementById('md-edit').style.display = 'none';
+  },
+
+  async saveMatEdit() {
+    const d = {
+      brand:   document.getElementById('me-brand').value.trim(),
+      product: document.getElementById('me-product').value.trim(),
+      date:    document.getElementById('me-date').value.trim(),
+      price:   document.getElementById('me-price').value,
+      qty:     document.getElementById('me-qty').value,
+    };
     try {
-      await SHEETS.quickAddMat(brand, product, price, qty);
-      document.getElementById('modal-qa').classList.remove('open');
-      this.toast(`✅ 已新增 ${product} x${qty} 到骨材記錄`);
-    } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
+      await SHEETS.updateMatRow(this._editRow, d);
+      this.closeModal('modal-mat-detail');
+      this.toast('✅ 已更新');
+      this.loadMatRec();
+    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
   },
 
-  // ── Quick Add Mat from selfpay button ──
+  async markDone(row) {
+    try {
+      await SHEETS.setDone(row);
+      this.toast('✅ 已標記完成');
+      this.loadMatRec();
+    } catch(e) { this.toast('❌ 失敗: ' + e.message); }
+  },
+
+  // ── Quick Add Mat from selfpay button (direct, no confirm) ──
   async quickAddMat(brand, product, price) {
     const now = new Date();
     const date = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
+    // Clean price: remove commas and non-numeric chars
+    const cleanPrice = String(price).replace(/,/g, '').trim();
     try {
-      await SHEETS.addMat({ date, brand, product, price, qty: '1' });
+      await SHEETS.addMat({ date, brand, product, price: cleanPrice, qty: '1' });
       this.toast(`✅ 已新增 ${product}`);
     } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
+  },
+
+  // ── Sort: English brands first, then Chinese ──
+  sortBrands(a, b) {
+    const isEngA = /^[A-Za-z0-9]/.test(a);
+    const isEngB = /^[A-Za-z0-9]/.test(b);
+    if (isEngA && !isEngB) return -1;  // A is English, B is Chinese → A first
+    if (!isEngA && isEngB) return 1;   // A is Chinese, B is English → B first
+    return a.localeCompare(b, 'zh-TW'); // Same type → alphabetical
   },
 
   // ── Toast ──

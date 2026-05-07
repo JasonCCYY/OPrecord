@@ -88,10 +88,28 @@ const SHEETS = {
   },
 
   async loadCodeRecords() {
-    const rows = await this.read(this.T.codeRec, 'A2:F500');
-    return rows.filter(r => r[0]).map((r, i) => ({
-      _row: i + 2, date: r[0] || '', name: r[1] || '', code: r[2] || '',
-      price: r[3] || '', qty: r[4] || '', area: r[5] || ''
+    // Read header row to auto-detect columns
+    const hRow = await this.read(this.T.codeRec, 'A1:J1');
+    const h = (hRow[0] || []).map(x => (x||'').trim());
+    const ci = (names, fb) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return fb; };
+    const iDate  = ci(['日期'], 0);
+    const iName  = ci(['術式','名稱'], 1);
+    const iCode  = ci(['代碼'], 2);
+    const iPrice = ci(['單價'], 3);
+    const iQty   = ci(['數量'], 4);
+    const iArea  = ci(['院區'], 5);
+    const iToday = ci(['今日新增'], -1);
+
+    const rows = await this.read(this.T.codeRec, 'A2:J500');
+    return rows.filter(r => r[iDate]).map((r, i) => ({
+      _row: i + 2,
+      date:     r[iDate]  || '',
+      name:     r[iName]  || '',
+      code:     r[iCode]  || '',
+      price:    r[iPrice] || '',
+      qty:      r[iQty]   || '',
+      area:     r[iArea]  || '',
+      todayNew: iToday >= 0 ? (r[iToday] || '') : ''
     })).sort((a, b) => b.date.localeCompare(a.date));
   },
 
@@ -131,6 +149,30 @@ const SHEETS = {
 
   // ── Writers ──
   async addOp(d)     { return this.append(this.T.op,      [[d.date, d.area, d.name, d.type, d.opName, d.location, d.implant, d.note]]); },
+  async updateMatRow(row, d) {
+    // Update columns A-E: 日期,廠牌,產品,單價,數量
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matRec + '!A' + row + ':E' + row)}?valueInputOption=USER_ENTERED`;
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { ...this.hdrs(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [[d.date, d.brand, d.product, d.price, d.qty]] })
+    });
+    if (!r.ok) throw new Error(`更新失敗(${r.status})`);
+    return r.json();
+  },
+
+  async setDone(row) {
+    // Set column G (Done) to true
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matRec + '!G' + row)}?valueInputOption=USER_ENTERED`;
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { ...this.hdrs(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [['true']] })
+    });
+    if (!r.ok) throw new Error(`標記失敗(${r.status})`);
+    return r.json();
+  },
+
   async addMat(d) {
     // A=日期, B=廠牌, C=產品, D=單價, E=數量, F=UsageID, G=Done, H=今日新增
     const usageId = Math.random().toString(36).substring(2, 10);
