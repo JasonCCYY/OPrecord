@@ -59,17 +59,42 @@ const SHEETS = {
   // ── Data Loaders ──
 
   async loadOpRecords() {
-    // 手術: 日期, 院區, 姓名, 類型, 術式, 備註
-    const rows = await this.read(this.TABS.opRecord, 'A2:F500');
-    return rows.map((r, i) => ({
-      _row: i + 2,
-      date: r[0] || '',
-      area: r[1] || '',
-      name: r[2] || '',
-      type: r[3] || '',
-      procedure: r[4] || '',
-      note: r[5] || ''
-    })).sort((a, b) => b.date.localeCompare(a.date));
+    // Read header row first to detect column order
+    const headerRow = await this.read(this.TABS.opRecord, 'A1:J1');
+    const headers = (headerRow[0] || []).map(h => (h||'').trim());
+    
+    // Column index map (fallback to position if header not found)
+    const col = (names, fallback) => {
+      for (const n of names) {
+        const i = headers.indexOf(n);
+        if (i >= 0) return i;
+      }
+      return fallback;
+    };
+    const iDate     = col(['日期'], 0);
+    const iArea     = col(['院區'], 1);
+    const iName     = col(['姓名'], 2);
+    const iType     = col(['類型'], 3);
+    const iOpName   = col(['名稱','術式','手術名稱'], 4);
+    const iLoc      = col(['部位'], 5);
+    const iImplant  = col(['骨材'], 6);
+    const iNote     = col(['備註'], 7);
+
+    const rows = await this.read(this.TABS.opRecord, 'A2:J500');
+    return rows
+      .filter(r => r[iDate] || r[iName]) // skip empty rows
+      .map((r, i) => ({
+        _row: i + 2,
+        date:    r[iDate]    || '',
+        area:    r[iArea]    || '',
+        name:    r[iName]    || '',
+        type:    r[iType]    || '',
+        opName:  r[iOpName]  || '',
+        location:r[iLoc]     || '',
+        implant: r[iImplant] || '',
+        note:    r[iNote]    || ''
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
   },
 
   async loadMatRecords() {
@@ -158,14 +183,34 @@ const SHEETS = {
   },
 
   async loadOpCategories() {
-    const rows = await this.read(this.TABS.opCategory, 'A2:B100');
+    // OP分類: 類型, 名稱
+    const rows = await this.read(this.TABS.opCategory, 'A2:B200');
     return rows.map(r => ({ type: r[0] || '', name: r[1] || '' }));
+  },
+
+  async loadBoneCategories() {
+    // 骨材分類: A=類型, B=骨材 (includes 生長因子 rows)
+    const rows = await this.read('骨材分類', 'A2:B200');
+    return rows.map(r => ({ type: r[0] || '', bone: r[1] || '' }));
+  },
+
+  // Pre-load and cache both category lists for modal use
+  async loadAllCategories() {
+    const [opCats, boneCats] = await Promise.all([
+      this.loadOpCategories(),
+      this.loadBoneCategories()
+    ]);
+    // Separate growth factors (生長因子) to append to every type
+    this._growthFactors = boneCats.filter(c => c.type === '生長因子').map(c => c.bone);
+    this._opCats = opCats;
+    this._boneCats = boneCats.filter(c => c.type !== '生長因子');
+    return { opCats, boneCats };
   },
 
   // ── Writers ──
 
   async addOpRecord(data) {
-    const row = [data.date, data.area, data.name, data.type, data.procedure, data.note];
+    const row = [data.date, data.area, data.name, data.type, data.opName, data.location, data.implant, data.note];
     return this.append(this.TABS.opRecord, [row]);
   },
 
