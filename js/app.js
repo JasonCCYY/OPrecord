@@ -1,293 +1,322 @@
-// ── Ortho Record App ──
+// ── Ortho Record App v2 ──
 const APP = {
   tab: 'surgery',
   subMat: 'matRec',
-  subCli: 'cliPrice',
+  subSx: 'sxList',   // sxList | track
+  searchActive: false,
+  searchQuery: '',
 
+  // ── Init ──
   async init() {
-    this.showLoad(true);
+    document.getElementById('loading').style.display = 'flex';
     await AUTH.init();
     this.bindTabs();
     this.bindSubTabs();
     document.getElementById('fab').addEventListener('click', () => this.fabClick());
-    this.showLoad(false);
-    if (!AUTH.ok) this.showAuth();
+    document.getElementById('loading').style.display = 'none';
+    if (!AUTH.ok) {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
   },
-
-  showLoad(v) { document.getElementById('loading').style.display = v ? 'flex' : 'none'; },
-  showAuth()  { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; },
 
   onAuthSuccess() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    const now = new Date();
-    document.getElementById('hdr-month').textContent = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
-    // Pre-load categories quietly
-    SHEETS.loadCategories().catch(e => console.warn('Category load:', e));
+    SHEETS.loadCategories();
     this.switchTab('surgery');
   },
 
-  today() {
-    const n = new Date();
-    return `${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getDate()).padStart(2,'0')}`;
-  },
+  // ── Helpers ──
+  fmt(v) { return v ? Number(String(v).replace(/,/g,'')).toLocaleString() : ''; },
+  fmtP(v) { const n = this.fmt(v); return n ? '$'+n : ''; },
+  uid() { return Math.random().toString(36).substring(2,10); },
+  nowMonth() { const n=new Date(); return `${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,'0')}`; },
+  today() { const n=new Date(); return `${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getDate()).padStart(2,'0')}`; },
   todayISO() { return new Date().toISOString().split('T')[0]; },
 
-  // ── Tabs ──
+  loading() { return '<div class="load-msg">載入中...</div>'; },
+  empty()   { return '<div class="empty-state"><div class="empty-icon">📋</div><div>尚無紀錄</div></div>'; },
+  err(e)    { return `<div class="empty-state"><div class="empty-icon">⚠️</div><div>${e.message}</div></div>`; },
+
+  dateNum(d) {
+    const p = d.split('/');
+    return p.length>=3 ? parseInt(p[0])*10000+parseInt(p[1])*100+parseInt(p[2]) : 0;
+  },
+  getMonth(d) {
+    const p = d.split('/');
+    return p.length>=2 ? p[0]+'/'+p[1].padStart(2,'0') : d.substring(0,7);
+  },
+  groupByMonth(recs) {
+    const map = {};
+    recs.forEach(r => { const m=this.getMonth(r.date); (map[m]=map[m]||[]).push(r); });
+    return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
+  },
+  sortBrands(a,b) {
+    const eA=/^[A-Za-z0-9]/.test(a), eB=/^[A-Za-z0-9]/.test(b);
+    if(eA&&!eB) return -1; if(!eA&&eB) return 1;
+    return a.localeCompare(b,'zh-TW');
+  },
+
+  // ── Tab routing ──
   bindTabs() {
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => this.switchTab(b.dataset.tab)));
   },
 
   switchTab(tab) {
     this.tab = tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    document.getElementById('hdr-title').textContent = { surgery: '手術紀錄', material: '醫材管理', clinic: '門診' }[tab];
-    document.getElementById('sub-mat').style.display = tab === 'material' ? 'flex' : 'none';
-    document.getElementById('sub-cli').style.display = tab === 'clinic'   ? 'flex' : 'none';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+    document.getElementById('sub-mat').style.display  = tab==='material' ? 'flex' : 'none';
+    document.getElementById('sub-sx').style.display   = tab==='surgery'  ? 'flex' : 'none';
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-
-    if (tab === 'surgery')  { document.getElementById('pg-surgery').classList.add('active');  this.loadSurgery(); }
-    else if (tab === 'material') this.switchMat(this.subMat);
-    else if (tab === 'clinic')   this.switchCli(this.subCli);
-
-    // FAB only for surgery
-    document.getElementById('fab').style.display = this.tab === 'surgery' ? 'flex' : 'none';
-    // Header + button for selfPay and opCode
-    const hdrAdd = document.getElementById('hdr-add-btn');
-    if(hdrAdd) hdrAdd.style.display = 'none';
+    document.getElementById('fab').style.display = (tab==='surgery'||tab==='clinic') ? 'flex' : 'none';
+    document.getElementById('hdr-add-btn').style.display = 'none';
+    if (tab==='surgery')  { document.getElementById('pg-surgery').classList.add('active');  this.switchSx(this.subSx); }
+    else if(tab==='material') this.switchMat(this.subMat);
+    else if(tab==='clinic') { document.getElementById('pg-clinic').classList.add('active'); this.loadClinic(); }
   },
 
   bindSubTabs() {
-    document.querySelectorAll('#sub-mat .sub-tab').forEach(b => b.addEventListener('click', () => this.switchMat(b.dataset.sub)));
-    document.querySelectorAll('#sub-cli .sub-tab').forEach(b => b.addEventListener('click', () => this.switchCli(b.dataset.sub)));
+    document.querySelectorAll('#sub-mat .sub-tab').forEach(b => b.addEventListener('click', ()=>this.switchMat(b.dataset.sub)));
+    document.querySelectorAll('#sub-sx .sub-tab').forEach(b => b.addEventListener('click', ()=>this.switchSx(b.dataset.sub)));
   },
 
   switchMat(sub) {
     this.subMat = sub;
-    document.querySelectorAll('#sub-mat .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+    document.querySelectorAll('#sub-mat .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub===sub));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const map = { matRec: 'pg-mat-rec', selfPay: 'pg-selfpay', opCode: 'pg-opcode', codeRec: 'pg-code-rec', estimate: 'pg-estimate' };
-    document.getElementById(map[sub])?.classList.add('active');
-    const load = { matRec: ()=>this.loadMatRec(), selfPay: ()=>this.loadSelfPay(), opCode: ()=>this.loadOpCode(), codeRec: ()=>this.loadCodeRec(), estimate: ()=>this.loadEstimate() };
-    load[sub]?.();
-    // Show header + button for selfPay and opCode
-    const hdrAdd = document.getElementById('hdr-add-btn');
-    if(hdrAdd) hdrAdd.style.display = ['selfPay','opCode'].includes(sub) ? 'flex' : 'none';
+    const pgMap = { matRec:'pg-mat-rec', selfPay:'pg-selfpay', opCode:'pg-opcode', codeRec:'pg-code-rec', estimate:'pg-estimate' };
+    document.getElementById(pgMap[sub])?.classList.add('active');
+    document.getElementById('fab').style.display = (sub==='matRec'||sub==='codeRec') ? 'flex' : 'none';
+    document.getElementById('hdr-add-btn').style.display = 'none';
+    const loaders = { matRec:()=>this.loadMatRec(), selfPay:()=>this.loadSelfPay(), opCode:()=>this.loadOpCode(), codeRec:()=>this.loadCodeRec(), estimate:()=>this.loadEstimate() };
+    loaders[sub]?.();
   },
 
-  switchCli(sub) {
-    this.subCli = sub;
-    document.querySelectorAll('#sub-cli .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    if (sub === 'cliPrice') { document.getElementById('pg-cli-price').classList.add('active'); this.loadCliPrice(); }
-    else                    { document.getElementById('pg-cli-rec').classList.add('active');   this.loadCliRec(); }
+  switchSx(sub) {
+    this.subSx = sub;
+    document.querySelectorAll('#sub-sx .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub===sub));
+    document.querySelectorAll('#pg-surgery .sub-page').forEach(p => p.style.display='none');
+    document.getElementById(sub==='sxList'?'pg-sx-list':'pg-track').style.display = '';
+    if(sub==='sxList') this.loadSurgery();
+    else this.loadTrack();
   },
 
   fabClick() {
-    if (this.tab === 'surgery') this.openModal('modal-op');
-    else if (this.tab === 'material') {
-      if (this.subMat === 'matRec')   this.openModal('modal-mat');
-      else if (this.subMat === 'codeRec') this.openModal('modal-code');
-      else if (this.subMat === 'selfPay') this.toast('💡 請在 Google Sheet 新增自費醫材');
-      else if (this.subMat === 'opCode')  this.toast('💡 請在 Google Sheet 新增代碼');
-    } else if (this.tab === 'clinic') this.openModal('modal-cli');
+    if(this.tab==='surgery') {
+      if(this.subSx==='sxList') this.openModal('modal-op');
+      else this.openModal('modal-track');
+    } else if(this.tab==='material') {
+      if(this.subMat==='matRec') this.openModal('modal-mat');
+      else if(this.subMat==='codeRec') this.openModal('modal-code');
+    } else if(this.tab==='clinic') {
+      this.openModal('modal-cli');
+    }
+  },
+
+  // ── Search ──
+  toggleSearch() {
+    this.searchActive = !this.searchActive;
+    const bar = document.getElementById('search-bar');
+    bar.style.display = this.searchActive ? 'flex' : 'none';
+    if(this.searchActive) document.getElementById('search-input').focus();
+    else { this.searchQuery=''; this.refresh(); }
+  },
+  onSearch(v) {
+    this.searchQuery = v.toLowerCase();
+    this.refresh();
+  },
+
+  // ── Refresh ──
+  refresh() {
+    if(this.tab==='surgery') this.switchSx(this.subSx);
+    else if(this.tab==='material') this.switchMat(this.subMat);
+    else if(this.tab==='clinic') this.loadClinic();
+    // Invalidate cache for current section
+    const cacheMap = { surgery:'op', track:'track', matRec:'matRec', selfPay:'matProd', opCode:'opCode', codeRec:'codeRec', estimate:'estimate', clinic:'clinic' };
+    const key = this.tab==='surgery' ? this.subSx : this.subMat;
+    const cacheKey = cacheMap[key] || cacheMap[this.tab];
+    if(cacheKey) localStorage.removeItem('ortho_'+cacheKey);
+    // Re-run load
+    if(this.tab==='surgery') this.switchSx(this.subSx);
+    else if(this.tab==='material') this.switchMat(this.subMat);
+    else this.loadClinic();
+  },
+
+  filterBySearch(recs, fields) {
+    if(!this.searchQuery) return recs;
+    return recs.filter(r => fields.some(f => (r[f]||'').toLowerCase().includes(this.searchQuery)));
   },
 
   // ── Surgery ──
   async loadSurgery() {
-    const wrap = document.getElementById('sx-list');
-    wrap.innerHTML = this.loading();
+    const el = document.getElementById('sx-list-body');
+    el.innerHTML = this.loading();
     try {
-      const recs = await SHEETS.loadOpRecords();
-      if (!recs.length) { wrap.innerHTML = this.empty(); return; }
-
-      // Normalize month: ensure YYYY/MM format
-      const getMonth = d => {
-        const p = d.split('/');
-        if(p.length>=2) return p[0]+'/'+p[1].padStart(2,'0');
-        return d.substring(0,7);
-      };
-
-      // Parse date to comparable number: 2026/5/29 -> 20260529
-      const dateNum = d => {
-        const p = d.split('/');
-        if(p.length>=3) return parseInt(p[0])*10000 + parseInt(p[1])*100 + parseInt(p[2]);
-        return 0;
-      };
-      // Sort: month desc → 中正 before 右昌 → date desc (within same month+area)
+      let recs = await SHEETS.loadOpRecords();
+      recs = this.filterBySearch(recs, ['name','type','opName','location','implant','area']);
       const sorted = [...recs].sort((a,b) => {
-        const ma = getMonth(a.date), mb = getMonth(b.date);
-        if(ma !== mb) return mb.localeCompare(ma);          // month desc
-        const aZ = a.area==='中正'?0:a.area==='右昌'?1:2;
-        const bZ = b.area==='中正'?0:b.area==='右昌'?1:2;
-        if(aZ !== bZ) return aZ-bZ;                         // 中正 first
-        return dateNum(b.date) - dateNum(a.date);            // date desc (later first)
+        const ma=this.getMonth(a.date), mb=this.getMonth(b.date);
+        if(ma!==mb) return mb.localeCompare(ma);
+        const aZ=a.area==='中正'?0:a.area==='右昌'?1:2;
+        const bZ=b.area==='中正'?0:b.area==='右昌'?1:2;
+        if(aZ!==bZ) return aZ-bZ;
+        return this.dateNum(b.date)-this.dateNum(a.date);
       });
-
-      let html = '<div class="sx-wrap"><table class="sx-table"><thead><tr><th>日期</th><th>院區</th><th>姓名</th><th>類型</th><th>名稱</th><th>部位</th><th>骨材</th><th>備註</th></tr></thead><tbody>';
+      if(!sorted.length) { el.innerHTML = this.empty(); return; }
+      let rows = '';
       let lastM = '';
       sorted.forEach(r => {
-        const m = getMonth(r.date);
-        if (m !== lastM) {
-          lastM = m;
-          const monthRecs = sorted.filter(x => getMonth(x.date) === m);
-          const zhCnt = monthRecs.filter(x=>x.area==='中正').length;
-          const ycCnt = monthRecs.filter(x=>x.area==='右昌').length;
-          const cntLabel = monthRecs.length + `（${zhCnt}/${ycCnt}）`;
-          html += `<tr class="sx-mrow"><td colspan="8"><span style="display:flex;align-items:center;gap:8px;padding:0">${m} <span class="month-badge">${cntLabel}</span></span></td></tr>`;
+        const m = this.getMonth(r.date);
+        if(m!==lastM) {
+          lastM=m;
+          const ms=sorted.filter(x=>this.getMonth(x.date)===m);
+          const zh=ms.filter(x=>x.area==='中正').length, yc=ms.filter(x=>x.area==='右昌').length;
+          rows += `<tr class="sx-month-row"><td colspan="8">${m} <span class="month-badge">${ms.length}（${zh}/${yc}）</span></td></tr>`;
         }
-        // Show day portion cleanly
-        const parts = r.date.split('/');
-        const day = parts.length>=3 ? parts[1].padStart(2,'0')+'/'+parts[2].padStart(2,'0') : r.date.substring(5);
-        const rowData = encodeURIComponent(JSON.stringify({_row:r._row,date:r.date,area:r.area,name:r.name,type:r.type,opName:r.opName,location:r.location,implant:r.implant,note:r.note}));
-        html += `<tr class="sx-row swipeable-tr" data-sx="${rowData}">
+        const p=r.date.split('/');
+        const day=p.length>=3?p[1].padStart(2,'0')+'/'+p[2].padStart(2,'0'):r.date.substring(5);
+        const enc=encodeURIComponent(JSON.stringify(r));
+        rows += `<tr class="sx-data-row" onclick="APP.openDetail('sx',${JSON.stringify(enc)})">
           <td class="sx-date">${day}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
-          <td><span class="badge badge-${r.type}">${r.type}</span></td>
+          <td><span class="badge badge-${r.type}">${r.type||'-'}</span></td>
           <td class="sx-opname">${r.opName}</td>
-          <td class="sx-loc">${r.location}</td>
+          <td class="sx-loc" title="${r.location}">${r.location}</td>
           <td class="sx-implant">${r.implant}</td>
           <td class="sx-note">${r.note}</td>
         </tr>`;
       });
-      html += '</tbody></table></div>';
-      wrap.innerHTML = html;
-
-      // Click to open detail
-      wrap.querySelectorAll('.swipeable-tr').forEach(tr => {
-        tr.addEventListener('click', () => APP.openSurgeryDetail(tr.getAttribute('data-sx')));
-      });
-    } catch(e) { wrap.innerHTML = this.err(e); }
+      el.innerHTML = rows;
+    } catch(e) { el.innerHTML = `<tr><td colspan="8">${this.err(e)}</td></tr>`; }
   },
 
-  // ── Material Record ──
+  // ── Track ──
+  async loadTrack() {
+    const el = document.getElementById('track-list-body');
+    el.innerHTML = this.loading();
+    try {
+      let recs = await SHEETS.loadTrackRecords();
+      recs = this.filterBySearch(recs, ['name','type','opName','location','area','mrn']);
+      if(!recs.length) { el.innerHTML = this.empty(); return; }
+      let rows = '';
+      recs.forEach(r => {
+        const enc=encodeURIComponent(JSON.stringify(r));
+        rows += `<tr class="sx-data-row" onclick="APP.openDetail('track',${JSON.stringify(enc)})">
+          <td class="sx-date">${r.date}</td>
+          <td class="sx-area">${r.area}</td>
+          <td class="sx-name">${r.name}</td>
+          <td><span class="badge badge-${r.type}">${r.type||'-'}</span></td>
+          <td class="sx-opname">${r.opName}</td>
+          <td class="sx-loc" title="${r.location}">${r.location}</td>
+          <td class="sx-implant">${r.implant}</td>
+          <td class="sx-note">${r.note}</td>
+        </tr>`;
+      });
+      el.innerHTML = rows;
+    } catch(e) { el.innerHTML = `<tr><td colspan="8">${this.err(e)}</td></tr>`; }
+  },
+
+  // ── Material Records ──
   async loadMatRec() {
     const el = document.getElementById('mat-rec-list');
     el.innerHTML = this.loading();
     try {
-      const recs = await SHEETS.loadMatRecords();
-      if (!recs.length) { el.innerHTML = this.empty(); return; }
+      let recs = await SHEETS.loadMatRecords();
+      recs = this.filterBySearch(recs, ['brand','product']);
+      if(!recs.length) { el.innerHTML = this.empty(); return; }
       let html = '';
-      const groups = this.groupByMonth(recs);
-      groups.forEach(([m, rows]) => {
-        const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
-        html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        const sorted = [...rows].sort((a, b) => {
-          const aN = a.todayNew&&a.todayNew.toString().toUpperCase()==='TRUE';
-          const bN = b.todayNew&&b.todayNew.toString().toUpperCase()==='TRUE';
+      this.groupByMonth(recs).forEach(([m, rows]) => {
+        const total = rows.reduce((s,r)=>s+(parseFloat(String(r.price).replace(/,/g,''))||0)*(parseInt(r.qty)||1),0);
+        html += `<div class="list-group-hdr sticky-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
+        const sorted = [...rows].sort((a,b)=>{
+          const aN=a.todayNew?.toString().toUpperCase()==='TRUE';
+          const bN=b.todayNew?.toString().toUpperCase()==='TRUE';
           if(aN&&!bN) return -1; if(!aN&&bN) return 1;
-          return APP.sortBrands(a.brand||'',b.brand||'');
+          return this.sortBrands(a.brand||'',b.brand||'');
         });
-        sorted.forEach((r, ri) => {
-          const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
-          const isDone = r.done && r.done.toString().toLowerCase() === 'true';
-          const rowCls = isNew ? 'item-row item-row--new' : 'item-row';
-          const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
-          const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
-          const subtotal = cleanP && r.qty && parseInt(r.qty) > 1
-            ? '<span class="item-subtotal">✕' + parseInt(r.qty) + ' =' + (cleanP*parseInt(r.qty)).toLocaleString() + '</span>'
-            : '';
-          const doneBtn = !isDone
-            ? `<button class="done-btn" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>`
-            : '<span style="width:32px;flex-shrink:0"></span>';
-          const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,date:r.date,price:r.price,qty:r.qty,done:r.done,todayNew:r.todayNew}));
-          html += `<div class="${rowCls} swipeable" data-mat='${rowData}'>
-            <div class="swipe-content" style="gap:10px">
-              ${dot}
-              <div class="item-brand">${r.brand}</div>
-              <div class="item-product">${r.product}${subtotal}</div>
-              <div class="item-qty">${r.qty}</div>
-              <div class="item-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
-              ${doneBtn}
-            </div>
-            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteMatRow(${r._row})">刪除</div>
+        sorted.forEach(r => {
+          const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
+          const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          const sub=cleanP&&parseInt(r.qty)>1?`<span class="sub-total">×${r.qty}=$${(cleanP*parseInt(r.qty)).toLocaleString()}</span>`:'';
+          const enc=encodeURIComponent(JSON.stringify(r));
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('mat',${JSON.stringify(enc)})">
+            ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
+            <span class="col-brand">${r.brand}</span>
+            <span class="col-product">${r.product}${sub}</span>
+            <span class="col-qty">${r.qty}</span>
+            <span class="col-price">${cleanP?'$'+cleanP.toLocaleString():''}</span>
+            <button class="done-btn${r.done?.toLowerCase()==='true'?' done-yes':''}" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>
           </div>`;
         });
       });
       el.innerHTML = html;
-      // Use event delegation for mobile touch compatibility
-      this.initSwipe(el, '.swipeable', row => {
-        if(row.getAttribute('data-mat')) APP.openMatDetail(row.getAttribute('data-mat'));
-      });
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
-  // ── Self-pay Products ──
+  // ── Self-pay ──
   async loadSelfPay() {
     const el = document.getElementById('selfpay-list');
     el.innerHTML = this.loading();
     try {
-      const items = await SHEETS.loadMatProducts();
-      if (!items.length) { el.innerHTML = this.empty(); return; }
-      let html = '';
-      // Group by brand, sorted alphabetically
+      let items = await SHEETS.loadMatProducts();
+      items = this.filterBySearch(items, ['brand','product']);
+      if(!items.length) { el.innerHTML = this.empty(); return; }
       const groups = {};
-      items.forEach(r => { (groups[r.brand] = groups[r.brand] || []).push(r); });
-      Object.entries(groups).sort((a,b) => APP.sortBrands(a[0],b[0])).forEach(([brand, rows]) => {
-        html += `<div class="month-hdr">${brand}</div>`;
+      items.forEach(r => { (groups[r.brand]=groups[r.brand]||[]).push(r); });
+      let html = '';
+      Object.entries(groups).sort((a,b)=>this.sortBrands(a[0],b[0])).forEach(([brand,rows]) => {
+        html += `<div class="list-group-hdr">${brand}</div>`;
         rows.forEach(r => {
           const cleanP = String(r.price||'').replace(/,/g,'').trim();
-          const priceStr = cleanP ? Number(cleanP).toLocaleString() : '-';
-          const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,type:r.type,price:r.price,hospital:r.hospital}));
-          const safeB = (r.brand||'').replace(/'/g,"\'");
-          const safeP2 = (r.product||'').replace(/'/g,"\'");
-          html += `<div class="item-row swipeable" data-selfpay="${rowData}">
-            <div class="swipe-content">
-              <div class="item-brand">${r.brand}</div>
-              <div class="item-product">${r.product}</div>
-              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddMat('${safeB}','${safeP2}','${cleanP}')" title="新增到骨材記錄">＋</button>
-              <div class="item-price">$${priceStr}</div>
-              <div style="width:36px;text-align:right;font-size:.72rem;color:var(--muted);flex-shrink:0">${r.hospital}</div>
-            </div>
-            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteSelfPay(${r._row})">刪除</div>
+          const enc = encodeURIComponent(JSON.stringify(r));
+          html += `<div class="list-row" onclick="APP.openDetail('selfpay',${JSON.stringify(enc)})">
+            <span class="col-brand">${r.brand}</span>
+            <span class="col-product">${r.product}</span>
+            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddMat('${r.brand.replace(/'/g,"\\'")}','${r.product.replace(/'/g,"\\'")}','${cleanP}')" title="新增到骨材記錄">＋</button>
+            <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'-'}</span>
+            <span class="col-hosp">${r.hospital}</span>
           </div>`;
         });
       });
       el.innerHTML = html;
-      this.initSwipe(el, '.swipeable', row => APP.openSelfPayDetail(row.getAttribute('data-selfpay')));
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
-  // ── OP Codes ──
+  // ── OP Code ──
   async loadOpCode() {
     const el = document.getElementById('opcode-list');
     el.innerHTML = this.loading();
     try {
-      const items = await SHEETS.loadOpCodes();
-      if (!items.length) { el.innerHTML = this.empty(); return; }
-      let html = '';
-      // Group by area, 中正 first then 右昌 then others
+      let items = await SHEETS.loadOpCodes();
+      items = this.filterBySearch(items, ['code','name','area']);
+      if(!items.length) { el.innerHTML = this.empty(); return; }
       const areaOrder = ['中正','右昌'];
       const groups = {};
-      items.forEach(r => { const a = r.area||'通用'; (groups[a]=groups[a]||[]).push(r); });
-      const sortedAreas = Object.keys(groups).sort((a,b) => {
-        const ai = areaOrder.indexOf(a), bi = areaOrder.indexOf(b);
-        if(ai>=0 && bi>=0) return ai-bi;
+      items.forEach(r => { const a=r.area||'通用'; (groups[a]=groups[a]||[]).push(r); });
+      const sortedAreas = Object.keys(groups).sort((a,b)=>{
+        const ai=areaOrder.indexOf(a), bi=areaOrder.indexOf(b);
+        if(ai>=0&&bi>=0) return ai-bi;
         if(ai>=0) return -1; if(bi>=0) return 1;
         return a.localeCompare(b,'zh-TW');
       });
+      let html = '';
       sortedAreas.forEach(area => {
-        const rows = groups[area].sort((a,b) => parseInt(a.code||0) - parseInt(b.code||0));
-        html += `<div class="month-hdr">${area}</div>`;
+        const rows = groups[area].sort((a,b)=>parseInt(a.code||0)-parseInt(b.code||0));
+        html += `<div class="list-group-hdr">${area}</div>`;
         rows.forEach(r => {
-          const cleanP = parseFloat(String(r.price).replace(/,/g,''))||0;
-          const safeN = r.name.replace(/'/g,"\'"), safeC = r.code.replace(/'/g,"\'");
-          const safeP = String(r.price).replace(/,/g,''), safeA = r.area.replace(/'/g,"\'");
-          const ocData = encodeURIComponent(JSON.stringify({_row:r._row,code:r.code,name:r.name,price:r.price,area:r.area}));
-          html += `<div class="item-row swipeable" data-opcode="${ocData}">
-            <div class="swipe-content">
-              <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem;width:52px">${r.code}</div>
-              <div class="item-product">${r.name}</div>
-              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddCode('${safeN}','${safeC}','${safeP}','${safeA}')" title="新增到代碼紀錄">＋</button>
-              <div class="item-price">${cleanP?'$'+cleanP.toLocaleString():''}</div>
-            </div>
-            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteOpCode(${r._row})">刪除</div>
+          const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          const enc = encodeURIComponent(JSON.stringify(r));
+          html += `<div class="list-row" onclick="APP.openDetail('opcode',${JSON.stringify(enc)})">
+            <span class="col-code">${r.code}</span>
+            <span class="col-product">${r.name}</span>
+            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddCode('${r.name.replace(/'/g,"\\'")}','${r.code}','${r.price}','${r.area}')" title="新增到代碼紀錄">＋</button>
+            <span class="col-price">${cleanP?'$'+cleanP.toLocaleString():''}</span>
           </div>`;
         });
       });
       el.innerHTML = html;
-      this.initSwipe(el, '.swipeable', r => APP.openOpCodeDetail(r.getAttribute('data-opcode')));
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
@@ -296,58 +325,38 @@ const APP = {
     const el = document.getElementById('code-rec-list');
     el.innerHTML = this.loading();
     try {
-      const recs = await SHEETS.loadCodeRecords();
-      if (!recs.length) { el.innerHTML = this.empty(); return; }
+      let recs = await SHEETS.loadCodeRecords();
+      recs = this.filterBySearch(recs, ['name','code','area']);
+      if(!recs.length) { el.innerHTML = this.empty(); return; }
       let html = '';
-      const groups = this.groupByMonth(recs);
-      groups.forEach(([m, rows]) => {
-        // Fix: price * qty for total
-        const total = rows.reduce((s, r) => {
-          const p = parseFloat(String(r.price).replace(/,/g,'')) || 0;
-          const q = parseInt(r.qty) || 1;
-          return s + p * q;
-        }, 0);
-        html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        // Sort: today-new first, then 中正>右昌, then English>Chinese
-        const areaOrd = ['中正','右昌'];
-        const sortedRows = [...rows].sort((a,b) => {
-          const aN = a.todayNew&&a.todayNew.toString().toUpperCase()==='TRUE';
-          const bN = b.todayNew&&b.todayNew.toString().toUpperCase()==='TRUE';
+      this.groupByMonth(recs).forEach(([m,rows]) => {
+        const total = rows.reduce((s,r)=>s+(parseFloat(String(r.price).replace(/,/g,''))||0)*(parseInt(r.qty)||1),0);
+        html += `<div class="list-group-hdr sticky-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
+        const areaOrd=['中正','右昌'];
+        const sorted=[...rows].sort((a,b)=>{
+          const aN=a.todayNew?.toString().toUpperCase()==='TRUE';
+          const bN=b.todayNew?.toString().toUpperCase()==='TRUE';
           if(aN&&!bN) return -1; if(!aN&&bN) return 1;
-          const ai=areaOrd.indexOf(a.area), bi=areaOrd.indexOf(b.area);
+          const ai=areaOrd.indexOf(a.area),bi=areaOrd.indexOf(b.area);
           if(ai>=0&&bi>=0&&ai!==bi) return ai-bi;
-          return parseInt(a.code||0) - parseInt(b.code||0);
+          return parseInt(a.code||0)-parseInt(b.code||0);
         });
-        sortedRows.forEach(r => {
-          const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
-          const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
-          const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
-          const rowCls = isNew ? 'code-row code-row--new' : 'code-row';
-          const crData = encodeURIComponent(JSON.stringify({_row:r._row,date:r.date,name:r.name,code:r.code,price:r.price,qty:r.qty,area:r.area}));
-          html += `<div class="${rowCls} swipeable" data-cr="${crData}">
-            <div class="swipe-content" style="gap:6px;padding:12px 16px">
-              ${dot}
-              <div class="code-name">${r.name}</div>
-              <div class="code-id">${r.code}</div>
-              <div class="code-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
-              <div class="code-qty">${r.qty}</div>
-              <div class="code-area">${r.area}</div>
-            </div>
-            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteCodeRec(${r._row})">刪除</div>
+        sorted.forEach(r => {
+          const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
+          const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          const enc=encodeURIComponent(JSON.stringify(r));
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('coderec',${JSON.stringify(enc)})">
+            ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
+            <span class="col-product">${r.name}</span>
+            <span class="col-code">${r.code}</span>
+            <span class="col-price">${cleanP?'$'+cleanP.toLocaleString():''}</span>
+            <span class="col-qty">${r.qty}</span>
+            <span class="col-area">${r.area}</span>
           </div>`;
         });
       });
       el.innerHTML = html;
-      this.initSwipe(el, '.swipeable', () => {});
     } catch(e) { el.innerHTML = this.err(e); }
-  },
-
-  async deleteCodeRec(row) {
-    if(!confirm('確定刪除？')) return;
-    try {
-      await SHEETS.clearRow(SHEETS.T.codeRec, row, 'A', 'H');
-      this.toast('🗑 已刪除'); this.loadCodeRec();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 
   // ── Estimate ──
@@ -356,523 +365,302 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       const recs = await SHEETS.loadEstimate();
-      if (!recs.length) { el.innerHTML = this.empty(); return; }
-      const fmt = v => v ? Number(String(v).replace(/,/g,'')).toLocaleString() : '-';
+      if(!recs.length) { el.innerHTML = this.empty(); return; }
+      // Order: 月份 預估 醫材 中正 門診 右昌
       el.innerHTML = recs.map(r => `<div class="est-row">
-        <div class="est-month">${r.month}</div>
-        <div class="est-total">${fmt(r.estimate)}</div>
-        <div class="est-val">${fmt(r.material)}</div>
-        <div class="est-val">${fmt(r.clinic)}</div>
-        <div class="est-val">${fmt(r.zhongzheng)}</div>
-        <div class="est-val">${fmt(r.youchang)}</div>
+        <span class="est-month">${r.month}</span>
+        <span class="est-total">${r.estimate?Number(String(r.estimate).replace(/,/g,'')).toLocaleString():'-'}</span>
+        <span class="est-val">${r.material?Number(String(r.material).replace(/,/g,'')).toLocaleString():'-'}</span>
+        <span class="est-val">${r.zhongzheng?Number(String(r.zhongzheng).replace(/,/g,'')).toLocaleString():'-'}</span>
+        <span class="est-val">${r.clinic?Number(String(r.clinic).replace(/,/g,'')).toLocaleString():'-'}</span>
+        <span class="est-val">${r.youchang?Number(String(r.youchang).replace(/,/g,'')).toLocaleString():'-'}</span>
       </div>`).join('');
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
-  // ── Clinic Price ──
-  async loadCliPrice() {
-    const el = document.getElementById('cli-price-list');
+  // ── Clinic (unified scroll) ──
+  async loadClinic() {
+    const el = document.getElementById('clinic-content');
     el.innerHTML = this.loading();
     try {
-      const items = await SHEETS.loadClinicProducts();
-      this._clinicProds = items;
-      if (!items.length) { el.innerHTML = this.empty(); return; }
-      el.innerHTML = items.map(r => `<div class="clinic-item">
-        <div class="clinic-name">${r.name}</div>
-        <div class="clinic-price">${r.price ? '$'+Number(String(r.price).replace(/,/g,"")).toLocaleString() : '免費'}</div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </div>`).join('');
-    } catch(e) { el.innerHTML = this.err(e); }
-  },
-
-  // ── Clinic Records ──
-  async loadCliRec() {
-    const el = document.getElementById('cli-rec-list');
-    el.innerHTML = this.loading();
-    try {
-      const recs = await SHEETS.loadClinicRecords();
-      if (!recs.length) { el.innerHTML = this.empty(); return; }
+      const [products, records] = await Promise.all([SHEETS.loadClinicProducts(), SHEETS.loadClinicRecords()]);
+      this._clinicProds = products;
       let html = '';
-      const groups = this.groupByMonth(recs);
-      groups.forEach(([m, rows]) => {
-        const total = rows.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-        html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
+
+      // Price list section
+      html += `<div class="clinic-section-hdr">自費項目</div>`;
+      products.forEach(r => {
+        const cleanP = String(r.price||'').replace(/,/g,'').trim();
+        html += `<div class="list-row">
+          <span class="col-product" style="font-weight:600">${r.name}</span>
+          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄">＋</button>
+          <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
+        </div>`;
+      });
+
+      // Records section
+      html += `<div class="clinic-section-hdr">門診記錄</div>`;
+      let filteredRecs = this.filterBySearch(records, ['product','date']);
+      this.groupByMonth(filteredRecs).forEach(([m,rows]) => {
+        const total = rows.reduce((s,r)=>s+(parseFloat(String(r.total||0).replace(/,/g,''))||0),0);
+        html += `<div class="list-group-hdr sticky-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
         rows.forEach(r => {
-          html += `<div class="item-row swipeable">
-            <div class="swipe-content" style="gap:10px">
-              <div class="item-brand" style="width:44px;font-size:.74rem">${r.date.substring(5)}</div>
-              <div class="item-product">${r.product}</div>
-              <div class="item-qty">${r.qty}</div>
-              <div class="item-price">${r.total ? '$'+Number(String(r.total).replace(/,/g,"")).toLocaleString() : ''}</div>
-            </div>
-            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteCliRec(${r._row})">刪除</div>
+          const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
+          const enc=encodeURIComponent(JSON.stringify(r));
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('clinic',${JSON.stringify(enc)})">
+            ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
+            <span class="col-date">${r.date.substring(5)}</span>
+            <span class="col-product">${r.product}</span>
+            <span class="col-qty">${r.qty}</span>
+            <span class="col-price">${r.total?'$'+Number(String(r.total).replace(/,/g,'')).toLocaleString():''}</span>
           </div>`;
         });
       });
+
       el.innerHTML = html;
-      this.initSwipe(el, '.swipeable', () => {});
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
-  async deleteCliRec(row) {
-    if(!confirm('確定刪除？')) return;
-    try {
-      await SHEETS.clearRow(SHEETS.T.clinic, row, 'A', 'D');
-      this.toast('🗑 已刪除'); this.loadCliRec();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
+  // ── Quick adds ──
+  async qAddMat(brand, product, price) {
+    try { await SHEETS.quickAddMat(brand, product, price); this.toast(`✅ 已新增 ${product}`); }
+    catch(e) { this.toast('❌ '+e.message); }
   },
 
-  // ── Helpers ──
-  groupByMonth(recs) {
-    const map = {};
-    recs.forEach(r => { const m = r.date.substring(0, 7); (map[m] = map[m] || []).push(r); });
-    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
-  },
-  loading() { return '<div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem">載入中...</div>'; },
-  empty()   { return '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">尚無紀錄</div></div>'; },
-  err(e)    { return `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">${e.message}</div></div>`; },
-
-  // ── Modals ──
-  openModal(id) {
-    document.getElementById(id).classList.add('open');
-    // Reset date fields to today
-    document.querySelectorAll(`#${id} input[type="date"]`).forEach(el => el.value = this.todayISO());
-  },
-  closeModal(id) { document.getElementById(id).classList.remove('open'); },
-
-  // ── Surgery Modal Logic ──
-  selectArea(el, v) {
-    document.querySelectorAll('.area-chip').forEach(c => c.classList.remove('on'));
-    el.classList.add('on');
-    document.getElementById('s-area-val').value = v;
+  async qAddCode(name, code, price, area) {
+    try { await SHEETS.quickAddCode({name,code,price,area}); this.toast(`✅ 已新增 ${name}`); }
+    catch(e) { this.toast('❌ '+e.message); }
   },
 
-  selectType(el, type) {
-    document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('on'));
-    el.classList.add('on');
-    document.getElementById('s-type-val').value = type;
-    this.updateOpDropdowns(type.trim());
-  },
-
-  updateOpDropdowns(type) {
-    // OP Name select
-    const sel = document.getElementById('s-opname');
-    const type2 = type.trim();
-    const names = (SHEETS.opCats || []).filter(c => c.type.trim() === type2).map(c => c.name);
-    sel.innerHTML = '<option value="">選擇手術名稱</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-
-    // Bone checkboxes
-    const wrap = document.getElementById('s-bone-wrap');
-    const mainBones = (SHEETS.boneCats || []).filter(c => c.type.trim() === type2).map(c => c.bone);
-    const growth = (SHEETS.growthFactors && SHEETS.growthFactors.length)
-      ? SHEETS.growthFactors
-      : ['漢森柏0.5', 'PRP 15K', 'PRP 36K', '羊膜22S', '瑟若美'];
-
-    let html = mainBones.map(b => `<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
-    html += `<div class="bone-section">生長因子</div>`;
-    html += growth.map(b => `<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
-    wrap.innerHTML = html;
-    this.updateBoneVal();
-  },
-
-  updateBoneVal() {
-    const vals = [...document.querySelectorAll('#s-bone-wrap input:checked')].map(c => c.value);
-    document.getElementById('s-bone-val').value = vals.join(' , ');
-  },
-
-  // Clinic auto-calc
-  calcClinicTotal() {
-    const prod = document.getElementById('cl-product').value;
-    const qty  = parseInt(document.getElementById('cl-qty').value) || 1;
-    const found = (this._clinicProds || []).find(p => p.name === prod);
-    if (found) document.getElementById('cl-total').value = (parseFloat(found.price) * qty) || 0;
-  },
-
-  // ── Save handlers ──
-  async saveOp() {
-    const d = {
-      date:     document.getElementById('s-date').value.replace(/-/g, '/'),
-      area:     document.getElementById('s-area-val').value,
-      name:     document.getElementById('s-name').value.trim(),
-      type:     document.getElementById('s-type-val').value,
-      opName:   document.getElementById('s-opname').value,
-      location: document.getElementById('s-location').value.trim(),
-      implant:  document.getElementById('s-bone-val').value,
-      note:     document.getElementById('s-note').value.trim(),
-    };
-    if (!d.date || !d.name) { this.toast('請填入日期和姓名'); return; }
-    try { await SHEETS.addOp(d); this.closeModal('modal-op'); this.toast('✅ 手術紀錄已儲存'); this.loadSurgery(); }
-    catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
-  },
-
-  async saveMat() {
-    const d = {
-      date:    document.getElementById('m-date').value.replace(/-/g, '/'),
-      brand:   document.getElementById('m-brand').value.trim(),
-      product: document.getElementById('m-product').value.trim(),
-      qty:     document.getElementById('m-qty').value,
-      price:   document.getElementById('m-price').value,
-    };
-    if (!d.date || !d.product) { this.toast('請填入日期和產品'); return; }
-    try { await SHEETS.addMat(d); this.closeModal('modal-mat'); this.toast('✅ 醫材紀錄已儲存'); this.loadMatRec(); }
-    catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
-  },
-
-  async saveCode() {
-    const d = {
-      date:  document.getElementById('c-date').value.replace(/-/g, '/'),
-      name:  document.getElementById('c-name').value.trim(),
-      code:  document.getElementById('c-code').value.trim(),
-      price: document.getElementById('c-price').value,
-      qty:   document.getElementById('c-qty').value,
-      area:  document.getElementById('c-area-val').value,
-    };
-    if (!d.date || !d.code) { this.toast('請填入日期和代碼'); return; }
-    try { await SHEETS.addCode(d); this.closeModal('modal-code'); this.toast('✅ 代碼紀錄已儲存'); this.loadCodeRec(); }
-    catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
-  },
-
-  async saveCli() {
-    const d = {
-      date:    document.getElementById('cl-date').value.replace(/-/g, '/'),
-      product: document.getElementById('cl-product').value,
-      qty:     document.getElementById('cl-qty').value,
-      total:   document.getElementById('cl-total').value,
-    };
-    if (!d.date || !d.product) { this.toast('請填入日期和產品'); return; }
-    try { await SHEETS.addClinic(d); this.closeModal('modal-cli'); this.toast('✅ 門診紀錄已儲存'); this.loadCliRec(); }
-    catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
-  },
-
-  // ── Mat Record Detail + Edit ──
-  openMatDetail(encoded) {
-    const r = JSON.parse(decodeURIComponent(encoded));
-    this._editRow = r._row;
-    this._editData = r;
-    const cleanP = parseFloat(String(r.price||0).replace(/,/g,'')) || 0;
-    const total = cleanP * (parseInt(r.qty) || 1);
-    document.getElementById('md-brand').textContent   = r.brand;
-    document.getElementById('md-product').textContent = r.product;
-    document.getElementById('md-date').textContent    = r.date;
-    document.getElementById('md-price').textContent   = cleanP ? '$' + cleanP.toLocaleString() : '-';
-    document.getElementById('md-qty').textContent     = r.qty;
-    document.getElementById('md-total').textContent   = total ? '$' + total.toLocaleString() : '-';
-    document.getElementById('md-view').style.display  = '';
-    document.getElementById('md-edit').style.display  = 'none';
-    this.openModal('modal-mat-detail');
-  },
-
-  openMatEdit() {
-    const r = this._editData;
-    document.getElementById('me-brand').value   = r.brand;
-    document.getElementById('me-product').value = r.product;
-    document.getElementById('me-date').value    = r.date;
-    document.getElementById('me-price').value   = String(r.price||'').replace(/,/g,'');
-    document.getElementById('me-qty').value     = r.qty || 1;
-    // Set Done toggle
-    const isDone = r.done && r.done.toString().toLowerCase() === 'true';
-    document.getElementById('me-done-y').classList.toggle('on', isDone);
-    document.getElementById('me-done-n').classList.toggle('on', !isDone);
-    document.getElementById('me-done-val').value = isDone ? 'true' : 'false';
-    document.getElementById('md-view').style.display = 'none';
-    document.getElementById('md-edit').style.display = '';
-  },
-
-  toggleDone(val) {
-    document.getElementById('me-done-val').value = val;
-    document.getElementById('me-done-y').classList.toggle('on', val === 'true');
-    document.getElementById('me-done-n').classList.toggle('on', val === 'false');
-  },
-
-  closeMatEdit() {
-    document.getElementById('md-view').style.display = '';
-    document.getElementById('md-edit').style.display = 'none';
-  },
-
-  async saveMatEdit() {
-    const d = {
-      brand:   document.getElementById('me-brand').value.trim(),
-      product: document.getElementById('me-product').value.trim(),
-      date:    document.getElementById('me-date').value.trim(),
-      price:   document.getElementById('me-price').value,
-      qty:     document.getElementById('me-qty').value,
-      done:    document.getElementById('me-done-val').value,
-    };
-    try {
-      await SHEETS.updateMatRow(this._editRow, d);
-      this.closeModal('modal-mat-detail');
-      this.toast('✅ 已更新');
-      this.loadMatRec();
-    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
-  },
-
-  async deleteMatRow() {
-    if (!confirm('確定刪除這筆紀錄？')) return;
-    try {
-      await SHEETS.deleteMatRow(this._editRow);
-      this.closeModal('modal-mat-detail');
-      this.toast('🗑 已刪除');
-      this.loadMatRec();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
+  async qAddClinic(name, price) {
+    try { await SHEETS.quickAddClinic(name, price); this.toast(`✅ 已新增 ${name}`); this.loadClinic(); }
+    catch(e) { this.toast('❌ '+e.message); }
   },
 
   async markDone(row) {
-    try {
-      await SHEETS.setDone(row);
-      this.toast('✅ 已標記完成');
-      this.loadMatRec();
-    } catch(e) { this.toast('❌ 失敗: ' + e.message); }
+    try { await SHEETS.setDone(row); this.toast('✅ 已標記完成'); this.loadMatRec(); }
+    catch(e) { this.toast('❌ '+e.message); }
   },
 
-  // ── Quick Add Mat from selfpay button (direct, no confirm) ──
-  async quickAddMat(brand, product, price) {
-    const now = new Date();
-    const date = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
-    // Clean price: remove commas and non-numeric chars
-    const cleanPrice = String(price).replace(/,/g, '').trim();
-    try {
-      await SHEETS.addMat({ date, brand, product, price: cleanPrice, qty: '1' });
-      this.toast(`✅ 已新增 ${product}`);
-    } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
-  },
-
-  // ── Swipe-to-delete (touch + mouse) ──
-  initSwipe(container, selector, onTap) {
-    container.querySelectorAll(selector).forEach(el => {
-      let startX = 0, startY = 0, dx = 0, swiped = false;
-      const content = el.querySelector('.swipe-content');
-      const del = el.querySelector('.swipe-delete');
-
-      const onStart = e => {
-        startX = (e.touches?.[0]||e).clientX;
-        startY = (e.touches?.[0]||e).clientY;
-        dx = 0; swiped = false;
-        content.style.transition = 'none';
-      };
-      const onMove = e => {
-        dx = (e.touches?.[0]||e).clientX - startX;
-        const dy = Math.abs((e.touches?.[0]||e).clientY - startY);
-        if(dy > 10 && Math.abs(dx) < dy) return;
-        if(dx < 0) {
-          content.style.transform = `translateX(${Math.max(dx,-80)}px)`;
-          e.preventDefault();
-        }
-      };
-      const onEnd = () => {
-        content.style.transition = 'transform 0.2s';
-        if(dx < -40) {
-          content.style.transform = 'translateX(-80px)';
-          del.style.width = '80px';
-          swiped = true;
-        } else {
-          content.style.transform = '';
-          del.style.width = '0';
-          swiped = false;
-        }
-      };
-      el.addEventListener('touchstart', onStart, {passive:true});
-      el.addEventListener('touchmove', onMove, {passive:false});
-      el.addEventListener('touchend', onEnd);
-      el.addEventListener('mousedown', onStart);
-      el.addEventListener('mousemove', onMove);
-      el.addEventListener('mouseup', onEnd);
-
-      el.addEventListener('click', e => {
-        if(swiped) { e.stopPropagation(); return; }
-        if(e.target.closest('.scalpel-btn,.swipe-delete')) return;
-        onTap(el);
-      });
-    });
-  },
-
-  // ── OP Code detail + quick add ──
-  quickAddCode(name, code, price, area) {
-    SHEETS.quickAddCode({name, code, price, area})
-      .then(() => this.toast(`✅ 已新增 ${name}`))
-      .catch(e => this.toast('❌ 新增失敗: ' + e.message));
-  },
-
-  openOpCodeDetail(encoded) {
+  // ── Universal Detail Modal ──
+  openDetail(type, encoded) {
     const r = JSON.parse(decodeURIComponent(encoded));
-    this._editOpCode = r;
-    document.getElementById('ocd-code').textContent  = r.code;
-    document.getElementById('ocd-name').textContent  = r.name;
-    const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-    document.getElementById('ocd-price').textContent = cleanP ? '$'+cleanP.toLocaleString() : '-';
-    document.getElementById('ocd-area').textContent  = r.area;
-    document.getElementById('ocd-view').style.display = '';
-    document.getElementById('ocd-edit').style.display = 'none';
-    this.openModal('modal-opcode-detail');
+    this._detailType = type;
+    this._detailData = r;
+    const modal = document.getElementById('modal-detail');
+    const title = document.getElementById('detail-title');
+    const body = document.getElementById('detail-body');
+    const editBtn = document.getElementById('detail-edit-btn');
+
+    const titles = { sx:'手術紀錄', track:'追蹤', mat:'骨材記錄', selfpay:'自費醫材', opcode:'OP代碼', coderec:'代碼紀錄', clinic:'門診記錄' };
+    title.textContent = titles[type] || '詳情';
+
+    const field = (label, val) => val ? `<div class="detail-field"><div class="detail-label">${label}</div><div class="detail-val">${val}</div></div>` : '';
+
+    let content = '';
+    if(type==='sx'||type==='track') {
+      content = field('日期',r.date)+field('院區',r.area)+(type==='track'?field('病歷號',r.mrn)+field('診所ID',r.clinicId):'')+field('姓名',r.name)+field('類型',r.type)+field('手術名稱',r.opName)+field('部位',r.location)+field('骨材',r.implant)+field('備註',r.note);
+    } else if(type==='mat') {
+      const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+      const total=cleanP*(parseInt(r.qty)||1);
+      content = field('廠牌',r.brand)+field('產品',r.product)+field('日期',r.date)+field('單價',cleanP?'$'+cleanP.toLocaleString():'')+field('數量',r.qty)+field('總價',total?'$'+total.toLocaleString():'')+field('Done',r.done);
+    } else if(type==='selfpay') {
+      content = field('廠牌',r.brand)+field('產品',r.product)+field('類型',r.type)+field('單價',r.price?'$'+Number(String(r.price).replace(/,/g,'')).toLocaleString():'')+field('醫院',r.hospital);
+    } else if(type==='opcode') {
+      content = field('代碼',r.code)+field('術式',r.name)+field('單價',r.price?'$'+Number(String(r.price).replace(/,/g,'')).toLocaleString():'')+field('院區',r.area);
+    } else if(type==='coderec') {
+      const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+      content = field('術式',r.name)+field('代碼',r.code)+field('日期',r.date)+field('單價',cleanP?'$'+cleanP.toLocaleString():'')+field('數量',r.qty)+field('院區',r.area);
+    } else if(type==='clinic') {
+      content = field('日期',r.date)+field('產品',r.product)+field('數量',r.qty)+field('總價',r.total?'$'+Number(String(r.total).replace(/,/g,'')).toLocaleString():'');
+    }
+    body.innerHTML = content;
+    editBtn.style.display = '';
+    modal.classList.add('open');
   },
 
-  openOpCodeEdit() {
-    const r = this._editOpCode;
-    document.getElementById('oce-code').value  = r.code;
-    document.getElementById('oce-name').value  = r.name;
-    document.getElementById('oce-price').value = String(r.price||'').replace(/,/g,'');
-    document.getElementById('oce-area').value  = r.area;
-    document.getElementById('ocd-view').style.display = 'none';
-    document.getElementById('ocd-edit').style.display = '';
+  openEdit() {
+    const type = this._detailType;
+    const r = this._detailData;
+    this.closeModal('modal-detail');
+    const editModalMap = { sx:'modal-edit-sx', track:'modal-edit-track', mat:'modal-edit-mat', selfpay:'modal-edit-selfpay', opcode:'modal-edit-opcode', coderec:'modal-edit-coderec', clinic:'modal-edit-clinic' };
+    const m = editModalMap[type];
+    if(!m) return;
+
+    // Populate fields
+    if(type==='sx'||type==='track') {
+      const pfx = type==='sx'?'es':'et';
+      document.getElementById(pfx+'-date').value   = r.date||'';
+      document.getElementById(pfx+'-area').value   = r.area||'';
+      document.getElementById(pfx+'-name').value   = r.name||'';
+      document.getElementById(pfx+'-type').value   = r.type||'';
+      document.getElementById(pfx+'-opname').value = r.opName||'';
+      document.getElementById(pfx+'-loc').value    = r.location||'';
+      document.getElementById(pfx+'-implant').value= r.implant||'';
+      document.getElementById(pfx+'-note').value   = r.note||'';
+      if(type==='track') {
+        document.getElementById('et-mrn').value     = r.mrn||'';
+        document.getElementById('et-clinicid').value= r.clinicId||'';
+      }
+    } else if(type==='mat') {
+      document.getElementById('em-brand').value   = r.brand||'';
+      document.getElementById('em-product').value = r.product||'';
+      document.getElementById('em-date').value    = r.date||'';
+      document.getElementById('em-price').value   = String(r.price||'').replace(/,/g,'');
+      document.getElementById('em-qty').value     = r.qty||'1';
+      const isDone = r.done?.toLowerCase()==='true';
+      document.getElementById('em-done-val').value = isDone?'true':'false';
+      document.getElementById('em-done-y').classList.toggle('on',isDone);
+      document.getElementById('em-done-n').classList.toggle('on',!isDone);
+    } else if(type==='selfpay') {
+      document.getElementById('esp-brand').value   = r.brand||'';
+      document.getElementById('esp-product').value = r.product||'';
+      document.getElementById('esp-price').value   = String(r.price||'').replace(/,/g,'');
+      document.getElementById('esp-hosp').value    = r.hospital||'';
+    } else if(type==='opcode') {
+      document.getElementById('eoc-code').value  = r.code||'';
+      document.getElementById('eoc-name').value  = r.name||'';
+      document.getElementById('eoc-price').value = String(r.price||'').replace(/,/g,'');
+      document.getElementById('eoc-area').value  = r.area||'';
+    } else if(type==='coderec') {
+      document.getElementById('ecr-name').value  = r.name||'';
+      document.getElementById('ecr-code').value  = r.code||'';
+      document.getElementById('ecr-date').value  = r.date||'';
+      document.getElementById('ecr-price').value = String(r.price||'').replace(/,/g,'');
+      document.getElementById('ecr-qty').value   = r.qty||'1';
+      document.getElementById('ecr-area').value  = r.area||'';
+    } else if(type==='clinic') {
+      document.getElementById('ecl-date').value    = r.date||'';
+      document.getElementById('ecl-product').value = r.product||'';
+      document.getElementById('ecl-qty').value     = r.qty||'1';
+      document.getElementById('ecl-total').value   = String(r.total||'').replace(/,/g,'');
+    }
+    this.openModal(m);
   },
 
-  async saveOpCodeEdit() {
-    const r = this._editOpCode;
-    const d = {
-      code:  document.getElementById('oce-code').value.trim(),
-      name:  document.getElementById('oce-name').value.trim(),
-      price: document.getElementById('oce-price').value,
-      area:  document.getElementById('oce-area').value.trim(),
-    };
+  async saveEdit() {
+    const type=this._detailType, r=this._detailData;
     try {
-      await SHEETS.updateOpCode(r._row, d);
-      this.closeModal('modal-opcode-detail');
+      if(type==='sx') {
+        await SHEETS.updateSurgery(r._row,{date:document.getElementById('es-date').value,area:document.getElementById('es-area').value,name:document.getElementById('es-name').value,type:document.getElementById('es-type').value,opName:document.getElementById('es-opname').value,location:document.getElementById('es-loc').value,implant:document.getElementById('es-implant').value,note:document.getElementById('es-note').value});
+        this.closeModal('modal-edit-sx'); this.loadSurgery();
+      } else if(type==='track') {
+        await SHEETS.updateTrack(r._row,{date:document.getElementById('et-date').value,area:document.getElementById('et-area').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid').value,name:document.getElementById('et-name').value,type:document.getElementById('et-type').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-implant').value,note:document.getElementById('et-note').value});
+        this.closeModal('modal-edit-track'); this.loadTrack();
+      } else if(type==='mat') {
+        await SHEETS.updateMatRow(r._row,{brand:document.getElementById('em-brand').value,product:document.getElementById('em-product').value,date:document.getElementById('em-date').value,price:document.getElementById('em-price').value,qty:document.getElementById('em-qty').value,done:document.getElementById('em-done-val').value});
+        this.closeModal('modal-edit-mat'); this.loadMatRec();
+      } else if(type==='selfpay') {
+        await SHEETS.updateSelfPay(r._row,{brand:document.getElementById('esp-brand').value,product:document.getElementById('esp-product').value,price:document.getElementById('esp-price').value,hospital:document.getElementById('esp-hosp').value});
+        this.closeModal('modal-edit-selfpay'); this.loadSelfPay();
+      } else if(type==='opcode') {
+        await SHEETS.updateOpCode(r._row,{code:document.getElementById('eoc-code').value,name:document.getElementById('eoc-name').value,price:document.getElementById('eoc-price').value,area:document.getElementById('eoc-area').value});
+        this.closeModal('modal-edit-opcode'); this.loadOpCode();
+      } else if(type==='coderec') {
+        await SHEETS.updateCodeRec(r._row,{name:document.getElementById('ecr-name').value,code:document.getElementById('ecr-code').value,date:document.getElementById('ecr-date').value,price:document.getElementById('ecr-price').value,qty:document.getElementById('ecr-qty').value,area:document.getElementById('ecr-area').value});
+        this.closeModal('modal-edit-coderec'); this.loadCodeRec();
+      } else if(type==='clinic') {
+        await SHEETS.updateClinicRec(r._row,{date:document.getElementById('ecl-date').value,product:document.getElementById('ecl-product').value,qty:document.getElementById('ecl-qty').value,total:document.getElementById('ecl-total').value});
+        this.closeModal('modal-edit-clinic'); this.loadClinic();
+      }
       this.toast('✅ 已更新');
-      this.loadOpCode();
-    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
+    } catch(e) { this.toast('❌ '+e.message); }
   },
 
-  async deleteOpCode(row) {
+  async deleteDetail() {
+    const type=this._detailType, r=this._detailData;
     if(!confirm('確定刪除？')) return;
+    const tabMap={sx:'op',track:'track',mat:'matRec',selfpay:'matProd',opcode:'opCode',coderec:'codeRec',clinic:'clinic'};
+    const colMap={sx:['A','H'],track:['A','K'],mat:['A','H'],selfpay:['A','F'],opcode:['A','E'],coderec:['A','H'],clinic:['A','F']};
+    const cacheMap={sx:'op',track:'track',mat:'matRec',selfpay:'matProd',opcode:'opCode',coderec:'codeRec',clinic:'clinic'};
     try {
-      await SHEETS.clearRow(SHEETS.T.opCode, row, 'A', 'E');
-      this.toast('🗑 已刪除'); this.loadOpCode();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
-  },
-
-  // ── Self-pay detail ──
-  openSelfPayDetail(encoded) {
-    const r = JSON.parse(decodeURIComponent(encoded));
-    this._editSelfPay = r;
-    document.getElementById('spd-brand').textContent   = r.brand;
-    document.getElementById('spd-product').textContent = r.product;
-    const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-    document.getElementById('spd-price').textContent   = cleanP ? '$'+cleanP.toLocaleString() : '-';
-    document.getElementById('spd-hospital').textContent= r.hospital;
-    document.getElementById('spd-view').style.display  = '';
-    document.getElementById('spd-edit').style.display  = 'none';
-    this.openModal('modal-selfpay-detail');
-  },
-
-  openSelfPayEdit() {
-    const r = this._editSelfPay;
-    document.getElementById('spe-brand').value   = r.brand;
-    document.getElementById('spe-product').value = r.product;
-    document.getElementById('spe-price').value   = String(r.price||'').replace(/,/g,'');
-    document.getElementById('spe-hospital').value= r.hospital;
-    document.getElementById('spd-view').style.display = 'none';
-    document.getElementById('spd-edit').style.display = '';
-  },
-
-  async saveSelfPayEdit() {
-    const r = this._editSelfPay;
-    const d = {
-      brand:    document.getElementById('spe-brand').value.trim(),
-      product:  document.getElementById('spe-product').value.trim(),
-      price:    document.getElementById('spe-price').value,
-      hospital: document.getElementById('spe-hospital').value.trim(),
-    };
-    try {
-      await SHEETS.updateSelfPay(r._row, d);
-      this.closeModal('modal-selfpay-detail');
-      this.toast('✅ 已更新'); this.loadSelfPay();
-    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
-  },
-
-  async deleteSelfPay(row) {
-    if(!confirm('確定刪除？')) return;
-    try {
-      await SHEETS.clearRow(SHEETS.T.matProd, row, 'A', 'F');
-      this.toast('🗑 已刪除'); this.loadSelfPay();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
-  },
-
-  // ── Surgery detail ──
-  openSurgeryDetail(encoded) {
-    const r = JSON.parse(decodeURIComponent(encoded));
-    this._editSurgery = r;
-    document.getElementById('sxd-date').textContent    = r.date;
-    document.getElementById('sxd-area').textContent    = r.area;
-    document.getElementById('sxd-name').textContent    = r.name;
-    document.getElementById('sxd-type').textContent    = r.type;
-    document.getElementById('sxd-opname').textContent  = r.opName;
-    document.getElementById('sxd-loc').textContent     = r.location;
-    document.getElementById('sxd-implant').textContent = r.implant;
-    document.getElementById('sxd-note').textContent    = r.note;
-    document.getElementById('sxd-view').style.display  = '';
-    document.getElementById('sxd-edit').style.display  = 'none';
-    this.openModal('modal-sx-detail');
-  },
-
-  openSurgeryEdit() {
-    const r = this._editSurgery;
-    document.getElementById('sxe-date').value   = r.date;
-    document.getElementById('sxe-area').value   = r.area;
-    document.getElementById('sxe-name').value   = r.name;
-    document.getElementById('sxe-type').value   = r.type;
-    document.getElementById('sxe-opname').value = r.opName;
-    document.getElementById('sxe-loc').value    = r.location;
-    document.getElementById('sxe-implant').value= r.implant;
-    document.getElementById('sxe-note').value   = r.note;
-    document.getElementById('sxd-view').style.display = 'none';
-    document.getElementById('sxd-edit').style.display = '';
-  },
-
-  async saveSurgeryEdit() {
-    const d = {
-      date:    document.getElementById('sxe-date').value.trim(),
-      area:    document.getElementById('sxe-area').value.trim(),
-      name:    document.getElementById('sxe-name').value.trim(),
-      type:    document.getElementById('sxe-type').value.trim(),
-      opName:  document.getElementById('sxe-opname').value.trim(),
-      location:document.getElementById('sxe-loc').value.trim(),
-      implant: document.getElementById('sxe-implant').value.trim(),
-      note:    document.getElementById('sxe-note').value.trim(),
-    };
-    try {
-      await SHEETS.updateSurgery(this._editSurgery._row, d);
-      this.closeModal('modal-sx-detail');
-      this.toast('✅ 已更新');
-      this.loadSurgery();
-    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
-  },
-
-  async deleteSurgery(row) {
-    if(!confirm('確定刪除這筆手術紀錄？')) return;
-    try {
-      await SHEETS.clearRow(SHEETS.T.op, row, 'A', 'H');
-      this.closeModal('modal-sx-detail');
+      const tab=SHEETS.T[tabMap[type]],cols=colMap[type];
+      await SHEETS.deleteRow(tab,r._row,cols[0],cols[1],cacheMap[type]);
+      this.closeModal('modal-detail');
       this.toast('🗑 已刪除');
-      this.loadSurgery();
-    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
+      this.refresh();
+    } catch(e) { this.toast('❌ '+e.message); }
   },
 
-  // ── Sort: English brands first, then Chinese ──
-  sortBrands(a, b) {
-    const isEngA = /^[A-Za-z0-9]/.test(a);
-    const isEngB = /^[A-Za-z0-9]/.test(b);
-    if (isEngA && !isEngB) return -1;  // A is English, B is Chinese → A first
-    if (!isEngA && isEngB) return 1;   // A is Chinese, B is English → B first
-    return a.localeCompare(b, 'zh-TW'); // Same type → alphabetical
+  toggleDone(val) {
+    document.getElementById('em-done-val').value=val;
+    document.getElementById('em-done-y').classList.toggle('on',val==='true');
+    document.getElementById('em-done-n').classList.toggle('on',val==='false');
   },
+
+  // ── New record modals ──
+  async saveOp() {
+    const d={date:document.getElementById('s-date').value.replace(/-/g,'/'),area:document.getElementById('s-area-val').value,name:document.getElementById('s-name').value.trim(),type:document.getElementById('s-type-val').value,opName:document.getElementById('s-opname').value,location:document.getElementById('s-location').value.trim(),implant:document.getElementById('s-bone-val').value,note:document.getElementById('s-note').value.trim()};
+    if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
+    try{await SHEETS.addOp(d);this.closeModal('modal-op');this.toast('✅ 已儲存');this.loadSurgery();}
+    catch(e){this.toast('❌ '+e.message);}
+  },
+
+  async saveTrack() {
+    const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid').value.trim(),name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-implant').value.trim(),note:document.getElementById('tk-note').value.trim()};
+    if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
+    try{await SHEETS.addTrack(d);this.closeModal('modal-track');this.toast('✅ 已儲存');this.loadTrack();}
+    catch(e){this.toast('❌ '+e.message);}
+  },
+
+  async saveMat() {
+    const d={date:document.getElementById('m-date').value.replace(/-/g,'/'),brand:document.getElementById('m-brand').value.trim(),product:document.getElementById('m-product').value.trim(),qty:document.getElementById('m-qty').value,price:document.getElementById('m-price').value};
+    if(!d.date||!d.product){this.toast('請填入日期和產品');return;}
+    try{await SHEETS.addMat(d);this.closeModal('modal-mat');this.toast('✅ 已儲存');this.loadMatRec();}
+    catch(e){this.toast('❌ '+e.message);}
+  },
+
+  async saveCode() {
+    const d={date:document.getElementById('c-date').value.replace(/-/g,'/'),name:document.getElementById('c-name').value.trim(),code:document.getElementById('c-code').value.trim(),price:document.getElementById('c-price').value,qty:document.getElementById('c-qty').value,area:document.getElementById('c-area').value};
+    if(!d.date||!d.code){this.toast('請填入日期和代碼');return;}
+    try{await SHEETS.addCode(d);this.closeModal('modal-code');this.toast('✅ 已儲存');this.loadCodeRec();}
+    catch(e){this.toast('❌ '+e.message);}
+  },
+
+  async saveCli() {
+    const d={date:document.getElementById('cl-date').value.replace(/-/g,'/'),product:document.getElementById('cl-product').value,qty:document.getElementById('cl-qty').value,total:document.getElementById('cl-total').value};
+    if(!d.date||!d.product){this.toast('請填入日期和產品');return;}
+    try{await SHEETS.addClinic(d);this.closeModal('modal-cli');this.toast('✅ 已儲存');this.loadClinic();}
+    catch(e){this.toast('❌ '+e.message);}
+  },
+
+  // Surgery modal chips
+  selectArea(el,v){document.querySelectorAll('.area-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');document.getElementById('s-area-val').value=v;},
+  selectType(el,type){
+    document.querySelectorAll('.type-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');
+    document.getElementById('s-type-val').value=type;
+    this.updateOpDropdowns(type);
+  },
+  updateOpDropdowns(type){
+    const sel=document.getElementById('s-opname');
+    const names=(SHEETS.opCats||[]).filter(c=>c.type.trim()===type).map(c=>c.name);
+    sel.innerHTML='<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+    const wrap=document.getElementById('s-bone-wrap');
+    const main=(SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
+    const growth=(SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
+    let h=main.map(b=>`<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
+    h+=`<div class="bone-section">生長因子</div>`;
+    h+=growth.map(b=>`<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
+    wrap.innerHTML=h; this.updateBoneVal();
+  },
+  updateBoneVal(){document.getElementById('s-bone-val').value=[...document.querySelectorAll('#s-bone-wrap input:checked')].map(c=>c.value).join(' , ');},
+
+  // ── Modal helpers ──
+  openModal(id){
+    document.getElementById(id).classList.add('open');
+    document.querySelectorAll(`#${id} input[type="date"]`).forEach(el=>el.value=this.todayISO());
+  },
+  closeModal(id){document.getElementById(id).classList.remove('open');},
 
   // ── Toast ──
-  toast(msg) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 2600);
+  toast(msg){
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),2600);
   },
-
-  // ── Refresh ──
-  refresh() {
-    if (this.tab === 'surgery') this.loadSurgery();
-    else if (this.tab === 'material') this.switchMat(this.subMat);
-    else this.switchCli(this.subCli);
-    this.toast('🔄 重新載入');
-  }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded',()=>{
   APP.init();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 });

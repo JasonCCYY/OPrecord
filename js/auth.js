@@ -1,4 +1,3 @@
-// ── Google OAuth2 ──
 const AUTH = {
   CLIENT_ID: '819164879021-10qcb700t7vpt5l1qhff7id63pkfve9e.apps.googleusercontent.com',
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets',
@@ -24,6 +23,7 @@ const AUTH = {
         if (saved) { this.accessToken = saved; APP.onAuthSuccess(); }
         resolve();
       };
+      s.onerror = () => resolve();
       document.head.appendChild(s);
     });
   },
@@ -38,12 +38,8 @@ const AUTH = {
   },
 
   _save(resp) {
-    localStorage.setItem('ortho_tok', JSON.stringify({
-      t: resp.access_token,
-      exp: Date.now() + resp.expires_in * 1000
-    }));
+    localStorage.setItem('ortho_tok', JSON.stringify({ t: resp.access_token, exp: Date.now() + resp.expires_in * 1000 }));
   },
-
   _load() {
     try {
       const d = JSON.parse(localStorage.getItem('ortho_tok') || 'null');
@@ -51,6 +47,5 @@ const AUTH = {
       return d.t;
     } catch { return null; }
   },
-
   get ok() { return !!this.accessToken; }
 };
