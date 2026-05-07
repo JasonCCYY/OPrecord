@@ -57,10 +57,10 @@ const SHEETS = {
   },
 
   async loadMatRecords() {
-    const rows = await this.read(this.T.matRec, 'A2:E500');
+    const rows = await this.read(this.T.matRec, 'A2:H500');
     return rows.filter(r => r[0]).map((r, i) => ({
       _row: i + 2, date: r[0] || '', brand: r[1] || '',
-      product: r[2] || '', qty: r[3] || '', price: r[4] || ''
+      product: r[2] || '', price: r[3] || '', qty: r[4] || ''
     })).sort((a, b) => b.date.localeCompare(a.date));
   },
 
@@ -116,8 +116,8 @@ const SHEETS = {
       this.read(this.T.opCat, 'A2:B200'),
       this.read(this.T.boneCat, 'A2:B200')
     ]);
-    this.opCats = opRows.filter(r => r[0]).map(r => ({ type: r[0] || '', name: r[1] || '' }));
-    const allBone = boneRows.filter(r => r[0]).map(r => ({ type: r[0] || '', bone: r[1] || '' }));
+    this.opCats = opRows.filter(r => r[0]).map(r => ({ type: (r[0]||'').trim(), name: (r[1]||'').trim() }));
+    const allBone = boneRows.filter(r => r[0]).map(r => ({ type: (r[0]||'').trim(), bone: (r[1]||'').trim() }));
     this.growthFactors = allBone.filter(r => r.type === '生長因子').map(r => r.bone);
     this.boneCats = allBone.filter(r => r.type !== '生長因子');
   },

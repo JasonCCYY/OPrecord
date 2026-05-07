@@ -129,13 +129,16 @@ const APP = {
       groups.forEach(([m, rows]) => {
         const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        rows.forEach(r => {
+        // Sort by brand name within each month
+        const sorted = [...rows].sort((a, b) => (a.brand || '').localeCompare(b.brand || '', 'zh-TW'));
+        sorted.forEach(r => {
+          const total1 = r.price && r.qty ? (parseFloat(r.price) * parseInt(r.qty)).toLocaleString() : '';
           html += `<div class="item-row">
             <div class="item-brand">${r.brand}</div>
             <div class="item-product">${r.product}</div>
             <div class="item-qty">${r.qty}</div>
             <div class="item-price">${r.price ? '$'+Number(r.price).toLocaleString() : ''}</div>
-            <div class="item-dl">⬇</div>
+            <div class="item-dl" style="font-size:.7rem;color:var(--muted)">${r.qty&&r.qty>1&&r.price ? '='+(parseFloat(r.price)*parseInt(r.qty)).toLocaleString() : ''}</div>
           </div>`;
         });
       });
@@ -304,18 +307,19 @@ const APP = {
     document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('on'));
     el.classList.add('on');
     document.getElementById('s-type-val').value = type;
-    this.updateOpDropdowns(type);
+    this.updateOpDropdowns(type.trim());
   },
 
   updateOpDropdowns(type) {
     // OP Name select
     const sel = document.getElementById('s-opname');
-    const names = (SHEETS.opCats || []).filter(c => c.type === type).map(c => c.name);
+    const type2 = type.trim();
+    const names = (SHEETS.opCats || []).filter(c => c.type.trim() === type2).map(c => c.name);
     sel.innerHTML = '<option value="">選擇手術名稱</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
 
     // Bone checkboxes
     const wrap = document.getElementById('s-bone-wrap');
-    const mainBones = (SHEETS.boneCats || []).filter(c => c.type === type).map(c => c.bone);
+    const mainBones = (SHEETS.boneCats || []).filter(c => c.type.trim() === type2).map(c => c.bone);
     const growth = (SHEETS.growthFactors && SHEETS.growthFactors.length)
       ? SHEETS.growthFactors
       : ['漢森柏0.5', 'PRP 15K', 'PRP 36K', '羊膜22S', '瑟若美'];
