@@ -91,17 +91,41 @@ const APP = {
     try {
       const recs = await SHEETS.loadOpRecords();
       if (!recs.length) { wrap.innerHTML = this.empty(); return; }
+
+      // Normalize month: ensure YYYY/MM format
+      const getMonth = d => {
+        const p = d.split('/');
+        if(p.length>=2) return p[0]+'/'+p[1].padStart(2,'0');
+        return d.substring(0,7);
+      };
+
+      // Sort: by month desc, then 中正 before 右昌, then date desc
+      const sorted = [...recs].sort((a,b) => {
+        const ma = getMonth(a.date), mb = getMonth(b.date);
+        if(ma !== mb) return mb.localeCompare(ma);
+        const aZ = a.area==='中正'?0:a.area==='右昌'?1:2;
+        const bZ = b.area==='中正'?0:b.area==='右昌'?1:2;
+        if(aZ !== bZ) return aZ-bZ;
+        return b.date.localeCompare(a.date);
+      });
+
       let html = '<div class="sx-wrap"><table class="sx-table"><thead><tr><th>日期</th><th>院區</th><th>姓名</th><th>類型</th><th>名稱</th><th>部位</th><th>骨材</th><th>備註</th></tr></thead><tbody>';
       let lastM = '';
-      recs.forEach(r => {
-        const m = r.date.substring(0, 7);
+      sorted.forEach(r => {
+        const m = getMonth(r.date);
         if (m !== lastM) {
           lastM = m;
-          const cnt = recs.filter(x => x.date.startsWith(m)).length;
-          html += `<tr class="sx-mrow"><td colspan="8"><span class="month-hdr" style="padding:0">${m} <span class="month-badge">${cnt}</span></span></td></tr>`;
+          const monthRecs = sorted.filter(x => getMonth(x.date) === m);
+          const zhCnt = monthRecs.filter(x=>x.area==='中正').length;
+          const ycCnt = monthRecs.filter(x=>x.area==='右昌').length;
+          const cntLabel = monthRecs.length + `（${zhCnt}/${ycCnt}）`;
+          html += `<tr class="sx-mrow"><td colspan="8"><span style="display:flex;align-items:center;gap:8px;padding:0">${m} <span class="month-badge">${cntLabel}</span></span></td></tr>`;
         }
-        const day = r.date.substring(5);
-        html += `<tr class="sx-row">
+        // Show day portion cleanly
+        const parts = r.date.split('/');
+        const day = parts.length>=3 ? parts[1].padStart(2,'0')+'/'+parts[2].padStart(2,'0') : r.date.substring(5);
+        const rowData = encodeURIComponent(JSON.stringify({_row:r._row,date:r.date,area:r.area,name:r.name,type:r.type,opName:r.opName,location:r.location,implant:r.implant,note:r.note}));
+        html += `<tr class="sx-row swipeable-tr" data-sx="${rowData}">
           <td class="sx-date">${day}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
@@ -114,6 +138,11 @@ const APP = {
       });
       html += '</tbody></table></div>';
       wrap.innerHTML = html;
+
+      // Click to open detail
+      wrap.querySelectorAll('.swipeable-tr').forEach(tr => {
+        tr.addEventListener('click', () => APP.openSurgeryDetail(tr.getAttribute('data-sx')));
+      });
     } catch(e) { wrap.innerHTML = this.err(e); }
   },
 
@@ -148,23 +177,23 @@ const APP = {
             ? `<button class="done-btn" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>`
             : '<span style="width:32px;flex-shrink:0"></span>';
           const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,date:r.date,price:r.price,qty:r.qty,done:r.done,todayNew:r.todayNew}));
-          html += `<div class="${rowCls}" data-mat='${rowData}'>
-            ${dot}
-            <div class="item-brand">${r.brand}</div>
-            <div class="item-product">${r.product}${subtotal}</div>
-            <div class="item-qty">${r.qty}</div>
-            <div class="item-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
-            ${doneBtn}
+          html += `<div class="${rowCls} swipeable" data-mat='${rowData}'>
+            <div class="swipe-content" style="gap:10px">
+              ${dot}
+              <div class="item-brand">${r.brand}</div>
+              <div class="item-product">${r.product}${subtotal}</div>
+              <div class="item-qty">${r.qty}</div>
+              <div class="item-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
+              ${doneBtn}
+            </div>
+            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteMatRow(${r._row})">刪除</div>
           </div>`;
         });
       });
       el.innerHTML = html;
       // Use event delegation for mobile touch compatibility
-      el.querySelectorAll('[data-mat]').forEach(row => {
-        row.addEventListener('click', (e) => {
-          if (e.target.closest('.done-btn')) return; // Don't open detail when clicking done btn
-          APP.openMatDetail(row.getAttribute('data-mat'));
-        });
+      this.initSwipe(el, '.swipeable', row => {
+        if(row.getAttribute('data-mat')) APP.openMatDetail(row.getAttribute('data-mat'));
       });
     } catch(e) { el.innerHTML = this.err(e); }
   },
@@ -181,20 +210,22 @@ const APP = {
       const groups = {};
       items.forEach(r => { (groups[r.brand] = groups[r.brand] || []).push(r); });
       Object.entries(groups).sort((a,b) => APP.sortBrands(a[0],b[0])).forEach(([brand, rows]) => {
-        html += `<div class="month-hdr">${brand} <span class="month-badge">${rows.length}</span></div>`;
+        html += `<div class="month-hdr">${brand}</div>`;
         rows.forEach(r => {
-          const priceStr = r.price ? Number(String(r.price).replace(/,/g,"")).toLocaleString() : '-';
+          const cleanP = String(r.price||'').replace(/,/g,'').trim();
+          const priceStr = cleanP ? Number(cleanP).toLocaleString() : '-';
+          const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,type:r.type,price:r.price,hospital:r.hospital}));
           const safeB = (r.brand||'').replace(/'/g,"\'");
-          const safeP = (r.product||'').replace(/'/g,"\'");
-          const safePrice = r.price || '';
-          html += `<div class="item-row">
-            <div class="item-brand">${r.brand}</div>
-            <div class="item-product">${r.product}${r.type ? '<br><span style="font-size:.7rem;color:var(--muted)">' + r.type + '</span>' : ''}</div>
-            <div class="item-price">$${priceStr}</div>
-            <div style="width:40px;text-align:right;font-size:.72rem;color:var(--muted)">${r.hospital}</div>
-            <button class="quick-add-btn" onclick="APP.quickAddMat('${safeB}','${safeP}','${safePrice}')" title="新增到骨材記錄">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
+          const safeP2 = (r.product||'').replace(/'/g,"\'");
+          html += `<div class="item-row swipeable" data-selfpay="${rowData}">
+            <div class="swipe-content">
+              <div class="item-brand">${r.brand}</div>
+              <div class="item-product">${r.product}</div>
+              <div class="item-price">$${priceStr}</div>
+              <div style="width:36px;text-align:right;font-size:.72rem;color:var(--muted);flex-shrink:0">${r.hospital}</div>
+              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddMat('${safeB}','${safeP2}','${cleanP}')" title="新增到骨材記錄">＋</button>
+            </div>
+            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteSelfPay(${r._row})">刪除</div>
           </div>`;
         });
       });
@@ -222,20 +253,21 @@ const APP = {
         return a.localeCompare(b,'zh-TW');
       });
       sortedAreas.forEach(area => {
-        const rows = groups[area].sort((a,b) => APP.sortBrands(a.name||'',b.name||''));
+        const rows = groups[area].sort((a,b) => parseInt(a.code||0) - parseInt(b.code||0));
         html += `<div class="month-hdr">${area}</div>`;
         rows.forEach(r => {
           const cleanP = parseFloat(String(r.price).replace(/,/g,''))||0;
           const safeN = r.name.replace(/'/g,"\'"), safeC = r.code.replace(/'/g,"\'");
           const safeP = String(r.price).replace(/,/g,''), safeA = r.area.replace(/'/g,"\'");
-          html += `<div class="item-row swipeable" data-opcode='${encodeURIComponent(JSON.stringify({_row:r._row,code:r.code,name:r.name,price:r.price,area:r.area}))}'>
+          const ocData = encodeURIComponent(JSON.stringify({_row:r._row,code:r.code,name:r.name,price:r.price,area:r.area}));
+          html += `<div class="item-row swipeable" data-opcode="${ocData}">
             <div class="swipe-content">
               <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem;width:52px">${r.code}</div>
               <div class="item-product">${r.name}</div>
               <div class="item-price">${cleanP?'$'+cleanP.toLocaleString():''}</div>
               <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddCode('${safeN}','${safeC}','${safeP}','${safeA}')" title="新增到代碼紀錄">＋</button>
             </div>
-            <div class="swipe-delete" onclick="APP.deleteOpCode(${r._row})">刪除</div>
+            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteOpCode(${r._row})">刪除</div>
           </div>`;
         });
       });
@@ -269,25 +301,38 @@ const APP = {
           if(aN&&!bN) return -1; if(!aN&&bN) return 1;
           const ai=areaOrd.indexOf(a.area), bi=areaOrd.indexOf(b.area);
           if(ai>=0&&bi>=0&&ai!==bi) return ai-bi;
-          return APP.sortBrands(a.name||'',b.name||'');
+          return parseInt(a.code||0) - parseInt(b.code||0);
         });
         sortedRows.forEach(r => {
           const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
           const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
           const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
           const rowCls = isNew ? 'code-row code-row--new' : 'code-row';
-          html += `<div class="${rowCls}">
-            ${dot}
-            <div class="code-name">${r.name}</div>
-            <div class="code-id">${r.code}</div>
-            <div class="code-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
-            <div class="code-qty">${r.qty}</div>
-            <div class="code-area">${r.area}</div>
+          const crData = encodeURIComponent(JSON.stringify({_row:r._row,date:r.date,name:r.name,code:r.code,price:r.price,qty:r.qty,area:r.area}));
+          html += `<div class="${rowCls} swipeable" data-cr="${crData}">
+            <div class="swipe-content" style="gap:6px;padding:12px 16px">
+              ${dot}
+              <div class="code-name">${r.name}</div>
+              <div class="code-id">${r.code}</div>
+              <div class="code-price">${cleanP ? '$'+cleanP.toLocaleString() : ''}</div>
+              <div class="code-qty">${r.qty}</div>
+              <div class="code-area">${r.area}</div>
+            </div>
+            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteCodeRec(${r._row})">刪除</div>
           </div>`;
         });
       });
       el.innerHTML = html;
+      this.initSwipe(el, '.swipeable', () => {});
     } catch(e) { el.innerHTML = this.err(e); }
+  },
+
+  async deleteCodeRec(row) {
+    if(!confirm('確定刪除？')) return;
+    try {
+      await SHEETS.clearRow(SHEETS.T.codeRec, row, 'A', 'H');
+      this.toast('🗑 已刪除'); this.loadCodeRec();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 
   // ── Estimate ──
@@ -338,16 +383,28 @@ const APP = {
         const total = rows.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
         rows.forEach(r => {
-          html += `<div class="item-row">
-            <div class="item-brand" style="width:44px;font-size:.74rem">${r.date.substring(5)}</div>
-            <div class="item-product">${r.product}</div>
-            <div class="item-qty">${r.qty}</div>
-            <div class="item-price">${r.total ? '$'+Number(String(r.total).replace(/,/g,"")).toLocaleString() : ''}</div>
+          html += `<div class="item-row swipeable">
+            <div class="swipe-content" style="gap:10px">
+              <div class="item-brand" style="width:44px;font-size:.74rem">${r.date.substring(5)}</div>
+              <div class="item-product">${r.product}</div>
+              <div class="item-qty">${r.qty}</div>
+              <div class="item-price">${r.total ? '$'+Number(String(r.total).replace(/,/g,"")).toLocaleString() : ''}</div>
+            </div>
+            <div class="swipe-delete" onclick="event.stopPropagation();APP.deleteCliRec(${r._row})">刪除</div>
           </div>`;
         });
       });
       el.innerHTML = html;
+      this.initSwipe(el, '.swipeable', () => {});
     } catch(e) { el.innerHTML = this.err(e); }
+  },
+
+  async deleteCliRec(row) {
+    if(!confirm('確定刪除？')) return;
+    try {
+      await SHEETS.clearRow(SHEETS.T.clinic, row, 'A', 'D');
+      this.toast('🗑 已刪除'); this.loadCliRec();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 
   // ── Helpers ──
@@ -711,6 +768,66 @@ const APP = {
     try {
       await SHEETS.clearRow(SHEETS.T.matProd, row, 'A', 'F');
       this.toast('🗑 已刪除'); this.loadSelfPay();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
+  },
+
+  // ── Surgery detail ──
+  openSurgeryDetail(encoded) {
+    const r = JSON.parse(decodeURIComponent(encoded));
+    this._editSurgery = r;
+    document.getElementById('sxd-date').textContent    = r.date;
+    document.getElementById('sxd-area').textContent    = r.area;
+    document.getElementById('sxd-name').textContent    = r.name;
+    document.getElementById('sxd-type').textContent    = r.type;
+    document.getElementById('sxd-opname').textContent  = r.opName;
+    document.getElementById('sxd-loc').textContent     = r.location;
+    document.getElementById('sxd-implant').textContent = r.implant;
+    document.getElementById('sxd-note').textContent    = r.note;
+    document.getElementById('sxd-view').style.display  = '';
+    document.getElementById('sxd-edit').style.display  = 'none';
+    this.openModal('modal-sx-detail');
+  },
+
+  openSurgeryEdit() {
+    const r = this._editSurgery;
+    document.getElementById('sxe-date').value   = r.date;
+    document.getElementById('sxe-area').value   = r.area;
+    document.getElementById('sxe-name').value   = r.name;
+    document.getElementById('sxe-type').value   = r.type;
+    document.getElementById('sxe-opname').value = r.opName;
+    document.getElementById('sxe-loc').value    = r.location;
+    document.getElementById('sxe-implant').value= r.implant;
+    document.getElementById('sxe-note').value   = r.note;
+    document.getElementById('sxd-view').style.display = 'none';
+    document.getElementById('sxd-edit').style.display = '';
+  },
+
+  async saveSurgeryEdit() {
+    const d = {
+      date:    document.getElementById('sxe-date').value.trim(),
+      area:    document.getElementById('sxe-area').value.trim(),
+      name:    document.getElementById('sxe-name').value.trim(),
+      type:    document.getElementById('sxe-type').value.trim(),
+      opName:  document.getElementById('sxe-opname').value.trim(),
+      location:document.getElementById('sxe-loc').value.trim(),
+      implant: document.getElementById('sxe-implant').value.trim(),
+      note:    document.getElementById('sxe-note').value.trim(),
+    };
+    try {
+      await SHEETS.updateSurgery(this._editSurgery._row, d);
+      this.closeModal('modal-sx-detail');
+      this.toast('✅ 已更新');
+      this.loadSurgery();
+    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
+  },
+
+  async deleteSurgery(row) {
+    if(!confirm('確定刪除這筆手術紀錄？')) return;
+    try {
+      await SHEETS.clearRow(SHEETS.T.op, row, 'A', 'H');
+      this.closeModal('modal-sx-detail');
+      this.toast('🗑 已刪除');
+      this.loadSurgery();
     } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 

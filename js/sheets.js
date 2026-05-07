@@ -149,6 +149,17 @@ const SHEETS = {
   },
 
   // ── Writers ──
+  async updateSurgery(row, d) {
+    // A=日期,B=院區,C=姓名,D=類型,E=名稱,F=部位,G=骨材,H=備註
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.op+'!A'+row+':H'+row)}?valueInputOption=USER_ENTERED`;
+    const r = await fetch(url, {
+      method:'PUT', headers:{...this.hdrs(),'Content-Type':'application/json'},
+      body: JSON.stringify({values:[[d.date,d.area,d.name,d.type,d.opName,d.location,d.implant,d.note]]})
+    });
+    if(!r.ok) throw new Error(`更新失敗(${r.status})`);
+    return r.json();
+  },
+
   async updateOpCode(row, d) {
     // A=代碼,B=術式,C=單價,D=院區
     const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.opCode+'!A'+row+':D'+row)}?valueInputOption=USER_ENTERED`;
