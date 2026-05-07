@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ortho">
+<meta name="theme-color" content="#1a7fd4">
+<title>Ortho Record</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-ov" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-txt">Ortho Record</div>
+</div>
+
+<!-- Auth -->
+<div id="auth-screen">
+  <div class="auth-logo">🦴</div>
+  <div class="auth-title">Ortho Record</div>
+  <div class="auth-sub">骨科手術紀錄管理系統<br>請使用 Google 帳號登入</div>
+  <button class="btn-google" onclick="AUTH.signIn()">
+    <img src="https://www.google.com/favicon.ico" alt="">
+    使用 Google 帳號登入
+  </button>
+</div>
+
+<!-- App -->
+<div id="app" style="display:none">
+
+  <!-- Header -->
+  <div id="header">
+    <div class="hdr-left">
+      <div class="hdr-title" id="hdr-title">手術紀錄</div>
+      <div class="hdr-month" id="hdr-month"></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="APP.refresh()" title="重新載入">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" onclick="AUTH.signOut()" title="登出">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Material sub-tabs -->
+  <div class="sub-tabs" id="sub-mat" style="display:none">
+    <button class="sub-tab active" data-sub="matRec">醫材記錄</button>
+    <button class="sub-tab" data-sub="selfPay">自費醫材</button>
+    <button class="sub-tab" data-sub="opCode">代碼</button>
+    <button class="sub-tab" data-sub="codeRec">代碼紀錄</button>
+    <button class="sub-tab" data-sub="estimate">預估</button>
+  </div>
+
+  <!-- Clinic sub-tabs -->
+  <div class="sub-tabs" id="sub-cli" style="display:none">
+    <button class="sub-tab active" data-sub="cliPrice">自費項目</button>
+    <button class="sub-tab" data-sub="cliRec">門診記錄</button>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- Surgery -->
+    <div id="pg-surgery" class="page active">
+      <div id="sx-list"></div>
+    </div>
+
+    <!-- Mat Record -->
+    <div id="pg-mat-rec" class="page">
+      <div class="tbl-hdr">
+        <div class="th th-brand">廠牌</div><div class="th th-prod">產品</div>
+        <div class="th th-qty">量</div><div class="th th-price">單價</div><div class="th th-dl"></div>
+      </div>
+      <div id="mat-rec-list"></div>
+    </div>
+
+    <!-- Self-pay -->
+    <div id="pg-selfpay" class="page">
+      <div class="tbl-hdr">
+        <div class="th" style="width:56px">廠牌</div><div class="th" style="flex:1">產品</div>
+        <div class="th" style="width:80px;text-align:right">單價</div>
+        <div class="th" style="width:60px;text-align:right">醫院</div>
+      </div>
+      <div id="selfpay-list"></div>
+    </div>
+
+    <!-- OP Code -->
+    <div id="pg-opcode" class="page">
+      <div class="tbl-hdr">
+        <div class="th" style="width:82px;font-family:'JetBrains Mono',monospace">代碼</div>
+        <div class="th" style="flex:1">術式</div>
+        <div class="th" style="width:82px;text-align:right">單價</div>
+      </div>
+      <div id="opcode-list"></div>
+    </div>
+
+    <!-- Code Record -->
+    <div id="pg-code-rec" class="page">
+      <div class="tbl-hdr" style="display:grid;grid-template-columns:86px 1fr 80px 36px 52px;gap:6px">
+        <div class="th">術式</div><div class="th">代碼</div><div class="th" style="text-align:right">單價</div>
+        <div class="th" style="text-align:center">量</div><div class="th" style="text-align:right">院區</div>
+      </div>
+      <div id="code-rec-list"></div>
+    </div>
+
+    <!-- Estimate -->
+    <div id="pg-estimate" class="page">
+      <div class="est-hdr">
+        <div class="th">月份</div><div class="th" style="text-align:right">預估</div>
+        <div class="th" style="text-align:right">醫材</div><div class="th" style="text-align:right">中正</div>
+      </div>
+      <div id="estimate-list"></div>
+    </div>
+
+    <!-- Clinic Price -->
+    <div id="pg-cli-price" class="page">
+      <div id="cli-price-list"></div>
+    </div>
+
+    <!-- Clinic Records -->
+    <div id="pg-cli-rec" class="page">
+      <div class="tbl-hdr">
+        <div class="th" style="width:44px">日期</div><div class="th" style="flex:1">產品</div>
+        <div class="th th-qty">量</div><div class="th th-price">總價</div>
+      </div>
+      <div id="cli-rec-list"></div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom Tabs -->
+  <div id="bottom-tabs">
+    <button class="tab-btn" data-tab="material">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      醫材
+    </button>
+    <button class="tab-btn active" data-tab="surgery">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      手術紀錄
+    </button>
+    <button class="tab-btn" data-tab="clinic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      門診
+    </button>
+  </div>
+
+</div><!-- /app -->
+
+<!-- FAB -->
+<button class="fab" id="fab" style="display:none">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Surgery Modal -->
+<div class="modal-bd" id="modal-op" onclick="if(event.target===this)APP.closeModal('modal-op')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">新增手術紀錄</div>
+
+  <div class="fg">
+    <label class="fg-label">日期</label>
+    <input class="f-input" type="date" id="s-date">
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">院區</label>
+    <input type="hidden" id="s-area-val" value="中正">
+    <div class="chip-row">
+      <button class="chip area-chip on" onclick="APP.selectArea(this,'中正')">中正</button>
+      <button class="chip area-chip" onclick="APP.selectArea(this,'右昌')">右昌</button>
+    </div>
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">病患姓名</label>
+    <input class="f-input" type="text" id="s-name" placeholder="輸入姓名">
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">類型</label>
+    <input type="hidden" id="s-type-val" value="Joint">
+    <div class="chip-row wrap">
+      <button class="chip type-chip on" onclick="APP.selectType(this,'Joint')">Joint</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'Sports')">Sports</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'Trauma')">Trauma</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'Spine')">Spine</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'Tumor')">Tumor</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'Hand')">Hand</button>
+      <button class="chip type-chip" onclick="APP.selectType(this,'ROI')">ROI</button>
+    </div>
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">手術名稱</label>
+    <select class="f-sel" id="s-opname"><option value="">請先選擇類型</option></select>
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">部位</label>
+    <input class="f-input" type="text" id="s-location" placeholder="如 Rt、Lt、L4-5">
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">骨材</label>
+    <input type="hidden" id="s-bone-val" value="">
+    <div class="bone-grid" id="s-bone-wrap">
+      <div style="color:var(--muted);font-size:.8rem">請先選擇類型</div>
+    </div>
+  </div>
+
+  <div class="fg">
+    <label class="fg-label">備註</label>
+    <input class="f-input" type="text" id="s-note" placeholder="選填">
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn-cancel" onclick="APP.closeModal('modal-op')">取消</button>
+    <button class="btn-save" onclick="APP.saveOp()">儲存</button>
+  </div>
+</div>
+</div>
+
+<!-- Mat Record Modal -->
+<div class="modal-bd" id="modal-mat" onclick="if(event.target===this)APP.closeModal('modal-mat')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">新增醫材紀錄</div>
+  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="m-date"></div>
+  <div class="fg"><label class="fg-label">廠牌</label><input class="f-input" type="text" id="m-brand" placeholder="廠牌名稱"></div>
+  <div class="fg"><label class="fg-label">產品</label><input class="f-input" type="text" id="m-product" placeholder="產品名稱"></div>
+  <div class="fg-row">
+    <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="m-qty" value="1" min="1"></div>
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="m-price" placeholder="0"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-cancel" onclick="APP.closeModal('modal-mat')">取消</button>
+    <button class="btn-save" onclick="APP.saveMat()">儲存</button>
+  </div>
+</div>
+</div>
+
+<!-- Code Record Modal -->
+<div class="modal-bd" id="modal-code" onclick="if(event.target===this)APP.closeModal('modal-code')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">新增代碼紀錄</div>
+  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="c-date"></div>
+  <div class="fg"><label class="fg-label">術式名稱</label><input class="f-input" type="text" id="c-name" placeholder="術式"></div>
+  <div class="fg"><label class="fg-label">代碼</label><input class="f-input" type="text" id="c-code" placeholder="如 64164"></div>
+  <div class="fg-row">
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="c-price" placeholder="0"></div>
+    <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="c-qty" value="1" min="1"></div>
+  </div>
+  <div class="fg">
+    <label class="fg-label">院區</label>
+    <input type="hidden" id="c-area-val" value="中正">
+    <div class="chip-row">
+      <button class="chip area-chip on" onclick="this.parentElement.previousElementSibling.value='中正';document.querySelectorAll('.c-area-chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')" style="font-size:.82rem">中正</button>
+      <button class="chip area-chip" onclick="this.parentElement.previousElementSibling.value='右昌';document.querySelectorAll('.c-area-chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')" style="font-size:.82rem">右昌</button>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-cancel" onclick="APP.closeModal('modal-code')">取消</button>
+    <button class="btn-save" onclick="APP.saveCode()">儲存</button>
+  </div>
+</div>
+</div>
+
+<!-- Clinic Modal -->
+<div class="modal-bd" id="modal-cli" onclick="if(event.target===this)APP.closeModal('modal-cli')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">新增門診紀錄</div>
+  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="cl-date"></div>
+  <div class="fg">
+    <label class="fg-label">產品</label>
+    <select class="f-sel" id="cl-product" onchange="APP.calcClinicTotal()">
+      <option value="">選擇產品</option>
+      <option value="增生">增生</option>
+      <option value="玻尿酸">玻尿酸</option>
+      <option value="震波">震波</option>
+      <option value="PRP">PRP</option>
+      <option value="外泌體">外泌體</option>
+      <option value="門診護具">門診護具</option>
+    </select>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="cl-qty" value="1" min="1" oninput="APP.calcClinicTotal()"></div>
+    <div class="fg"><label class="fg-label">總價</label><input class="f-input" type="number" id="cl-total" placeholder="自動計算"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-cancel" onclick="APP.closeModal('modal-cli')">取消</button>
+    <button class="btn-save" onclick="APP.saveCli()">儲存</button>
+  </div>
+</div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
