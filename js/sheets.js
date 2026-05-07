@@ -9,7 +9,7 @@ const SHEETS = {
     opCode:   'OP代碼',
     codeRec:  'OP代碼記錄',
     estimate: '預估',
-    clinic:   '門診',
+    clinic:   '門診記錄',
     clinicP:  '門診產品',
     opCat:    'OP分類',
     boneCat:  '骨材分類',
@@ -180,12 +180,12 @@ const SHEETS = {
   },
 
   async loadClinicRecords() {
-    // 門診: A=日期,B=產品,C=數量,D=總價,E=UsageID,F=今日新增
+    // 門診: A=日期,B=產品,C=單價,D=數量,E=UsageID,F=今日新增
     const load = async () => {
       const rows = await this.read(this.T.clinic, 'A2:F500');
       return rows.filter(r=>r[0]).map((r,i)=>({
-        _row:i+2, date:r[0]||'', product:r[1]||'', qty:r[2]||'',
-        total:r[3]||'', usageId:r[4]||'', todayNew:r[5]||''
+        _row:i+2, date:r[0]||'', product:r[1]||'',
+        price:r[2]||'', qty:r[3]||'', usageId:r[4]||'', todayNew:r[5]||''
       })).sort((a,b)=>b.date.localeCompare(a.date));
     };
     return this.cached('clinic', load);
@@ -243,7 +243,7 @@ const SHEETS = {
   },
 
   async updateClinicRec(row, d) {
-    await this.put(this.T.clinic+'!A'+row+':D'+row, [[d.date,d.product,d.qty,d.total]]);
+    await this.put(this.T.clinic+'!A'+row+':D'+row, [[d.date,d.product,d.price||d.total,d.qty]]);
     localStorage.removeItem('ortho_clinic');
   },
 
@@ -280,13 +280,14 @@ const SHEETS = {
   },
 
   async quickAddClinic(name, price) {
-    const total = parseFloat(String(price).replace(/,/g,'')) || 0;
-    const r = await this.append(this.T.clinic, [[this.nowMonth(),name,'1',total,this.uid(),'TRUE']]);
+    const cleanP = parseFloat(String(price).replace(/,/g,'')) || 0;
+    const r = await this.append(this.T.clinic, [[this.nowMonth(),name,cleanP,'1',this.uid(),'TRUE']]);
     localStorage.removeItem('ortho_clinic'); return r;
   },
 
   async addClinic(d) {
-    const r = await this.append(this.T.clinic, [[d.date,d.product,d.qty,d.total,this.uid(),'']]);
+    // A=日期,B=產品,C=單價,D=數量,E=UsageID,F=今日新增
+    const r = await this.append(this.T.clinic, [[d.date,d.product,d.price||'',d.qty,this.uid(),'']]);
     localStorage.removeItem('ortho_clinic'); return r;
   },
 

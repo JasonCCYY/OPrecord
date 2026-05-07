@@ -69,7 +69,7 @@ const APP = {
     document.getElementById('sub-mat').style.display  = tab==='material' ? 'flex' : 'none';
     document.getElementById('sub-sx').style.display   = tab==='surgery'  ? 'flex' : 'none';
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('fab').style.display = (tab==='surgery'||tab==='clinic') ? 'flex' : 'none';
+    document.getElementById('fab').style.display = tab==='surgery' ? 'flex' : 'none';
     document.getElementById('hdr-add-btn').style.display = 'none';
     if (tab==='surgery')  { document.getElementById('pg-surgery').classList.add('active');  this.switchSx(this.subSx); }
     else if(tab==='material') this.switchMat(this.subMat);
@@ -87,7 +87,7 @@ const APP = {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pgMap = { matRec:'pg-mat-rec', selfPay:'pg-selfpay', opCode:'pg-opcode', codeRec:'pg-code-rec', estimate:'pg-estimate' };
     document.getElementById(pgMap[sub])?.classList.add('active');
-    document.getElementById('fab').style.display = (sub==='matRec'||sub==='codeRec') ? 'flex' : 'none';
+    document.getElementById('fab').style.display = 'none';
     document.getElementById('hdr-add-btn').style.display = 'none';
     const loaders = { matRec:()=>this.loadMatRec(), selfPay:()=>this.loadSelfPay(), opCode:()=>this.loadOpCode(), codeRec:()=>this.loadCodeRec(), estimate:()=>this.loadEstimate() };
     loaders[sub]?.();
@@ -97,7 +97,8 @@ const APP = {
     this.subSx = sub;
     document.querySelectorAll('#sub-sx .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub===sub));
     document.querySelectorAll('#pg-surgery .sub-page').forEach(p => p.style.display='none');
-    document.getElementById(sub==='sxList'?'pg-sx-list':'pg-track').style.display = '';
+    document.getElementById(sub==='sxList'?'pg-sx-list':'pg-track').style.display = 'flex';
+    document.getElementById('fab').style.display = 'flex';
     if(sub==='sxList') this.loadSurgery();
     else this.loadTrack();
   },
@@ -109,9 +110,7 @@ const APP = {
     } else if(this.tab==='material') {
       if(this.subMat==='matRec') this.openModal('modal-mat');
       else if(this.subMat==='codeRec') this.openModal('modal-code');
-    } else if(this.tab==='clinic') {
-      this.openModal('modal-cli');
-    }
+    }  // clinic FAB removed
   },
 
   // ── Search ──
@@ -247,7 +246,7 @@ const APP = {
             <span class="col-product">${r.product}${sub}</span>
             <span class="col-qty">${r.qty}</span>
             <span class="col-price">${cleanP?'$'+cleanP.toLocaleString():''}</span>
-            <button class="done-btn${r.done?.toLowerCase()==='true'?' done-yes':''}" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>
+            ${r.done?.toLowerCase()==='true' ? '' : `<button class="done-btn" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>`}
           </div>`;
         });
       });
@@ -402,17 +401,23 @@ const APP = {
       html += `<div class="clinic-section-hdr">門診記錄</div>`;
       let filteredRecs = this.filterBySearch(records, ['product','date']);
       this.groupByMonth(filteredRecs).forEach(([m,rows]) => {
-        const total = rows.reduce((s,r)=>s+(parseFloat(String(r.total||0).replace(/,/g,''))||0),0);
-        html += `<div class="list-group-hdr sticky-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
+        const mTotal = rows.reduce((s,r)=>{
+          const p=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          const q=parseInt(r.qty)||1;
+          return s+p*q;
+        },0);
+        html += `<div class="list-group-hdr sticky-hdr">${m} <span class="month-badge">$${mTotal.toLocaleString()}</span></div>`;
         rows.forEach(r => {
           const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
           const enc=encodeURIComponent(JSON.stringify(r));
+          const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          const rowTotal=cleanP*(parseInt(r.qty)||1);
           html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('clinic',${JSON.stringify(enc)})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-date">${r.date.substring(5)}</span>
             <span class="col-product">${r.product}</span>
             <span class="col-qty">${r.qty}</span>
-            <span class="col-price">${r.total?'$'+Number(String(r.total).replace(/,/g,'')).toLocaleString():''}</span>
+            <span class="col-price">${rowTotal?'$'+rowTotal.toLocaleString():''}</span>
           </div>`;
         });
       });
@@ -472,7 +477,9 @@ const APP = {
       const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
       content = field('術式',r.name)+field('代碼',r.code)+field('日期',r.date)+field('單價',cleanP?'$'+cleanP.toLocaleString():'')+field('數量',r.qty)+field('院區',r.area);
     } else if(type==='clinic') {
-      content = field('日期',r.date)+field('產品',r.product)+field('數量',r.qty)+field('總價',r.total?'$'+Number(String(r.total).replace(/,/g,'')).toLocaleString():'');
+      const cleanP2=parseFloat(String(r.price||0).replace(/,/g,''))||0;
+      const rowTot=cleanP2*(parseInt(r.qty)||1);
+      content = field('日期',r.date)+field('產品',r.product)+field('單價',cleanP2?'$'+cleanP2.toLocaleString():'')+field('數量',r.qty)+field('總價',rowTot?'$'+rowTot.toLocaleString():'');
     }
     body.innerHTML = content;
     editBtn.style.display = '';
@@ -532,8 +539,8 @@ const APP = {
     } else if(type==='clinic') {
       document.getElementById('ecl-date').value    = r.date||'';
       document.getElementById('ecl-product').value = r.product||'';
+      document.getElementById('ecl-price').value   = String(r.price||'').replace(/,/g,'');
       document.getElementById('ecl-qty').value     = r.qty||'1';
-      document.getElementById('ecl-total').value   = String(r.total||'').replace(/,/g,'');
     }
     this.openModal(m);
   },
@@ -560,7 +567,7 @@ const APP = {
         await SHEETS.updateCodeRec(r._row,{name:document.getElementById('ecr-name').value,code:document.getElementById('ecr-code').value,date:document.getElementById('ecr-date').value,price:document.getElementById('ecr-price').value,qty:document.getElementById('ecr-qty').value,area:document.getElementById('ecr-area').value});
         this.closeModal('modal-edit-coderec'); this.loadCodeRec();
       } else if(type==='clinic') {
-        await SHEETS.updateClinicRec(r._row,{date:document.getElementById('ecl-date').value,product:document.getElementById('ecl-product').value,qty:document.getElementById('ecl-qty').value,total:document.getElementById('ecl-total').value});
+        await SHEETS.updateClinicRec(r._row,{date:document.getElementById('ecl-date').value,product:document.getElementById('ecl-product').value,price:document.getElementById('ecl-price').value,qty:document.getElementById('ecl-qty').value});
         this.closeModal('modal-edit-clinic'); this.loadClinic();
       }
       this.toast('✅ 已更新');
@@ -572,6 +579,7 @@ const APP = {
     if(!confirm('確定刪除？')) return;
     const tabMap={sx:'op',track:'track',mat:'matRec',selfpay:'matProd',opcode:'opCode',coderec:'codeRec',clinic:'clinic'};
     const colMap={sx:['A','H'],track:['A','K'],mat:['A','H'],selfpay:['A','F'],opcode:['A','E'],coderec:['A','H'],clinic:['A','F']};
+    // clinic: A=日期,B=產品,C=單價,D=數量,E=UsageID,F=今日新增
     const cacheMap={sx:'op',track:'track',mat:'matRec',selfpay:'matProd',opcode:'opCode',coderec:'codeRec',clinic:'clinic'};
     try {
       const tab=SHEETS.T[tabMap[type]],cols=colMap[type];
@@ -618,7 +626,7 @@ const APP = {
   },
 
   async saveCli() {
-    const d={date:document.getElementById('cl-date').value.replace(/-/g,'/'),product:document.getElementById('cl-product').value,qty:document.getElementById('cl-qty').value,total:document.getElementById('cl-total').value};
+    const d={date:document.getElementById('cl-date').value.replace(/-/g,'/'),product:document.getElementById('cl-product').value,price:document.getElementById('cl-price').value,qty:document.getElementById('cl-qty').value};
     if(!d.date||!d.product){this.toast('請填入日期和產品');return;}
     try{await SHEETS.addClinic(d);this.closeModal('modal-cli');this.toast('✅ 已儲存');this.loadClinic();}
     catch(e){this.toast('❌ '+e.message);}

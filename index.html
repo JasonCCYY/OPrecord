@@ -86,7 +86,7 @@
     <!-- ── Surgery Page ── -->
     <div id="pg-surgery" class="page active">
       <!-- Sx list sub-page -->
-      <div class="sub-page" id="pg-sx-list" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="sub-page" id="pg-sx-list">
         <div class="sx-wrap">
           <table class="sx-table">
             <thead><tr>
@@ -98,7 +98,7 @@
         </div>
       </div>
       <!-- Track sub-page -->
-      <div class="sub-page" id="pg-track" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="sub-page" id="pg-track" style="display:none">
         <div class="sx-wrap">
           <table class="sx-table">
             <thead><tr>
@@ -113,52 +113,58 @@
 
     <!-- ── Material Record ── -->
     <div id="pg-mat-rec" class="page">
-      <div class="list-content">
-        <div class="est-hdr" style="display:grid;grid-template-columns:64px 1fr 36px 88px 30px;gap:10px;font-size:.72rem">
-          <span class="th">廠牌</span><span class="th">產品</span><span class="th" style="text-align:center">量</span><span class="th" style="text-align:right">單價</span><span></span>
-        </div>
-        <div id="mat-rec-list"></div>
+      <div class="col-hdr-row">
+        <span class="th col-brand">廠牌</span>
+        <span class="th col-product">產品</span>
+        <span class="th col-qty" style="text-align:center">數量</span>
+        <span class="th col-price" style="text-align:right">單價</span>
+        <span style="width:30px;flex-shrink:0"></span>
       </div>
+      <div class="list-content"><div id="mat-rec-list"></div></div>
     </div>
 
     <!-- ── Self-pay ── -->
     <div id="pg-selfpay" class="page">
-      <div class="list-content">
-        <div class="est-hdr" style="display:grid;grid-template-columns:64px 1fr 36px 88px 40px;gap:10px;font-size:.72rem">
-          <span class="th">廠牌</span><span class="th">產品</span><span></span><span class="th" style="text-align:right">單價</span><span class="th" style="text-align:right">醫院</span>
-        </div>
-        <div id="selfpay-list"></div>
+      <div class="col-hdr-row">
+        <span class="th col-brand">廠牌</span>
+        <span class="th col-product">產品</span>
+        <span style="width:36px;flex-shrink:0"></span>
+        <span class="th col-price" style="text-align:right">單價</span>
+        <span class="th col-hosp" style="text-align:right">醫院</span>
       </div>
+      <div class="list-content"><div id="selfpay-list"></div></div>
     </div>
 
     <!-- ── OP Code ── -->
     <div id="pg-opcode" class="page">
-      <div class="list-content">
-        <div class="est-hdr" style="display:grid;grid-template-columns:56px 1fr 36px 88px;gap:10px;font-size:.72rem">
-          <span class="th">代碼</span><span class="th">術式</span><span></span><span class="th" style="text-align:right">單價</span>
-        </div>
-        <div id="opcode-list"></div>
+      <div class="col-hdr-row">
+        <span class="th col-code">代碼</span>
+        <span class="th col-product">術式</span>
+        <span style="width:36px;flex-shrink:0"></span>
+        <span class="th col-price" style="text-align:right">單價</span>
       </div>
+      <div class="list-content"><div id="opcode-list"></div></div>
     </div>
 
     <!-- ── Code Record ── -->
     <div id="pg-code-rec" class="page">
-      <div class="list-content">
-        <div class="est-hdr" style="display:grid;grid-template-columns:14px 1fr 56px 88px 36px 44px;gap:8px;font-size:.72rem">
-          <span></span><span class="th">術式</span><span class="th">代碼</span><span class="th" style="text-align:right">單價</span><span class="th" style="text-align:center">量</span><span class="th" style="text-align:right">院區</span>
-        </div>
-        <div id="code-rec-list"></div>
+      <div class="col-hdr-row">
+        <span class="dot-ph"></span>
+        <span class="th col-product">術式</span>
+        <span class="th col-code">代碼</span>
+        <span class="th col-price" style="text-align:right">單價</span>
+        <span class="th col-qty" style="text-align:center">量</span>
+        <span class="th col-area" style="text-align:right">院區</span>
       </div>
+      <div class="list-content"><div id="code-rec-list"></div></div>
     </div>
 
     <!-- ── Estimate ── -->
     <div id="pg-estimate" class="page">
-      <div class="list-content">
-        <div class="est-hdr">
-          <span class="th">月份</span><span class="th" style="text-align:right">預估</span><span class="th" style="text-align:right">醫材</span><span class="th" style="text-align:right">中正</span><span class="th" style="text-align:right">門診</span><span class="th" style="text-align:right">右昌</span>
-        </div>
-        <div id="estimate-list"></div>
+      <div class="est-hdr" style="position:sticky;top:0;z-index:10">
+        <span class="th">月份</span><span class="th" style="text-align:right">預估</span><span class="th" style="text-align:right">醫材</span><span class="th" style="text-align:right">中正</span><span class="th" style="text-align:right">門診</span><span class="th" style="text-align:right">右昌</span>
       </div>
+      <div class="list-content"><div id="estimate-list"></div></div>
     </div>
 
     <!-- ── Clinic (unified scroll) ── -->
@@ -317,8 +323,8 @@
   <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="text" id="ecl-date"></div>
   <div class="fg"><label class="fg-label">產品</label><input class="f-input" type="text" id="ecl-product"></div>
   <div class="fg-row">
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="ecl-price"></div>
     <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="ecl-qty" min="1"></div>
-    <div class="fg"><label class="fg-label">總價</label><input class="f-input" type="number" id="ecl-total"></div>
   </div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-clinic')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
@@ -416,8 +422,8 @@
   <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="cl-date"></div>
   <div class="fg"><label class="fg-label">產品</label><input class="f-input" type="text" id="cl-product" placeholder="輸入產品名稱"></div>
   <div class="fg-row">
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="cl-price" placeholder="0"></div>
     <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="cl-qty" value="1" min="1"></div>
-    <div class="fg"><label class="fg-label">總價</label><input class="f-input" type="number" id="cl-total" placeholder="0"></div>
   </div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-cli')">取消</button><button class="btn-save" onclick="APP.saveCli()">儲存</button></div>
 </div></div>

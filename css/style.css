@@ -66,12 +66,12 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .sub-tab.active::after{content:'';position:absolute;bottom:0;left:8px;right:8px;height:2px;background:var(--accent);border-radius:2px 2px 0 0}
 
 /* ── Content ── */
-#content{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.page{display:none;flex-direction:column;flex:1;overflow:hidden}
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.page{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
 .page.active{display:flex}
 
 /* ── Surgery / Track table ── */
-.sx-wrap{overflow:auto;flex:1;-webkit-overflow-scrolling:touch}
+.sx-wrap{overflow:auto;flex:1;-webkit-overflow-scrolling:touch;display:block}
 .sx-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:.88rem}
 .sx-table thead{position:sticky;top:0;z-index:10;background:var(--bg)}
 .sx-table th{padding:9px 12px;text-align:left;font-size:.73rem;font-weight:700;color:var(--muted);white-space:nowrap;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
@@ -88,6 +88,9 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .sx-implant{color:var(--green);font-size:.8rem;min-width:80px}
 .sx-note{color:var(--muted);font-size:.8rem}
 
+/* ── Sub-page layout ── */
+.sub-page{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+
 /* ── Type badges ── */
 .badge{font-size:.7rem;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
 .badge-Joint  {background:rgba(234,108,26,.12);color:#c45a10;border:1px solid rgba(234,108,26,.22)}
@@ -99,9 +102,9 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .badge-ROI    {background:rgba(100,116,139,.12);color:#475569;border:1px solid rgba(100,116,139,.22)}
 
 /* ── List rows (material, code, etc.) ── */
-.list-content{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+.list-content{flex:1;overflow:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;display:block}
 .list-group-hdr{padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--txt2);background:var(--bg);border-bottom:1px solid var(--border)}
-.sticky-hdr{position:sticky;top:0;z-index:8}
+.sticky-hdr{position:sticky;top:0;z-index:8;width:100%}
 .list-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface);gap:10px;cursor:pointer;min-width:max-content;width:100%}
 .list-row:active{background:var(--card)}
 .row-new{border-left:3px solid var(--amber);background:linear-gradient(to right,rgba(245,158,11,.06),var(--surface))}
@@ -129,25 +132,24 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 
 /* Done button */
 .done-btn{flex-shrink:0;width:30px;height:30px;border:1.5px solid var(--acc-bd);background:var(--acc-lt);color:var(--accent);border-radius:var(--r-sm);cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center}
-.done-btn.done-yes{background:var(--green);border-color:var(--green);color:white}
 .done-btn:active{transform:scale(.9)}
 
 /* ── Estimate ── */
 .est-hdr,.est-row{display:grid;grid-template-columns:80px 1fr 90px 80px 80px 60px;padding:10px 14px;border-bottom:1px solid var(--border);gap:8px;align-items:center}
-.est-hdr{background:var(--bg);position:sticky;top:0;z-index:8;font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase}
+.est-hdr{background:var(--bg);position:sticky;top:0;z-index:10;font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase}
 .est-row{background:var(--surface)}
 .est-month{font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:600}
 .est-total{font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;color:var(--accent);text-align:right}
 .est-val{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--txt2);text-align:right}
 
 /* ── Clinic unified ── */
-.clinic-section-hdr{padding:12px 14px 6px;font-size:.95rem;font-weight:700;color:var(--txt);background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9}
+.clinic-section-hdr{padding:10px 14px 7px;font-size:.95rem;font-weight:700;color:var(--txt);background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9}
 
 /* ── Month badge ── */
 .month-badge{background:var(--acc-lt);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:2px 8px;border-radius:20px;border:1px solid var(--acc-bd);margin-left:8px}
 
 /* ── FAB ── */
-.fab{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);right:16px;width:52px;height:52px;background:var(--accent);border:none;border-radius:50%;color:white;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 16px rgba(26,127,212,.38);display:flex;align-items:center;justify-content:center;z-index:50}
+.fab{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);right:16px;width:52px;height:52px;background:var(--accent);border:none;border-radius:50%;color:white;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 16px rgba(26,127,212,.38);display:none;align-items:center;justify-content:center;z-index:50}
 .fab:active{transform:scale(.93)}
 
 /* ── Loading ── */
@@ -208,3 +210,10 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 
 /* Done toggle */
 .done-toggle{display:flex;gap:8px}
+
+/* ── Sub-page (surgery / track) ── */
+.sub-page{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+
+/* ── Column header row sticky ── */
+.col-hdr-row{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:2px solid var(--border);display:flex;align-items:center;padding:8px 14px;min-width:max-content;width:100%;flex-shrink:0}
+.col-hdr-row .th{font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
