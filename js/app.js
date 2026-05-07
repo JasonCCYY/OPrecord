@@ -129,16 +129,20 @@ const APP = {
       groups.forEach(([m, rows]) => {
         const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        // Sort by brand name within each month
         const sorted = [...rows].sort((a, b) => (a.brand || '').localeCompare(b.brand || '', 'zh-TW'));
         sorted.forEach(r => {
-          const total1 = r.price && r.qty ? (parseFloat(r.price) * parseInt(r.qty)).toLocaleString() : '';
-          html += `<div class="item-row">
+          const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
+          const rowCls = isNew ? 'item-row item-row--new' : 'item-row';
+          const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
+          const subtotal = r.price && r.qty && parseInt(r.qty) > 1
+            ? '<span class="item-subtotal">✕' + parseInt(r.qty) + ' =' + (parseFloat(r.price)*parseInt(r.qty)).toLocaleString() + '</span>'
+            : '';
+          html += `<div class="${rowCls}">
+            ${dot}
             <div class="item-brand">${r.brand}</div>
-            <div class="item-product">${r.product}</div>
+            <div class="item-product">${r.product}${subtotal}</div>
             <div class="item-qty">${r.qty}</div>
             <div class="item-price">${r.price ? '$'+Number(r.price).toLocaleString() : ''}</div>
-            <div class="item-dl" style="font-size:.7rem;color:var(--muted)">${r.qty&&r.qty>1&&r.price ? '='+(parseFloat(r.price)*parseInt(r.qty)).toLocaleString() : ''}</div>
           </div>`;
         });
       });
@@ -154,16 +158,24 @@ const APP = {
       const items = await SHEETS.loadMatProducts();
       if (!items.length) { el.innerHTML = this.empty(); return; }
       let html = '';
+      // Group by brand, sorted alphabetically
       const groups = {};
       items.forEach(r => { (groups[r.brand] = groups[r.brand] || []).push(r); });
-      Object.entries(groups).forEach(([brand, rows]) => {
+      Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0],'zh-TW')).forEach(([brand, rows]) => {
         html += `<div class="month-hdr">${brand} <span class="month-badge">${rows.length}</span></div>`;
         rows.forEach(r => {
-          html += `<div class="sp-row">
-            <div style="font-size:.74rem;color:var(--muted)">${r.brand}</div>
-            <div style="font-size:.9rem">${r.product}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--green);text-align:right;font-weight:600">$${Number(r.price).toLocaleString()}</div>
-            <div style="font-size:.72rem;color:var(--muted);text-align:right">${r.hospital}</div>
+          const priceStr = r.price ? Number(r.price).toLocaleString() : '-';
+          const safeB = (r.brand||'').replace(/'/g,"\'");
+          const safeP = (r.product||'').replace(/'/g,"\'");
+          const safePrice = r.price || '';
+          html += `<div class="item-row">
+            <div class="item-brand">${r.brand}</div>
+            <div class="item-product">${r.product}${r.type ? '<br><span style="font-size:.7rem;color:var(--muted)">' + r.type + '</span>' : ''}</div>
+            <div class="item-price">$${priceStr}</div>
+            <div style="width:40px;text-align:right;font-size:.72rem;color:var(--muted)">${r.hospital}</div>
+            <button class="quick-add-btn" onclick="APP.openQuickAdd('${safeB}','${safeP}','${safePrice}')" title="新增到骨材記錄">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
           </div>`;
         });
       });
@@ -398,6 +410,40 @@ const APP = {
     if (!d.date || !d.product) { this.toast('請填入日期和產品'); return; }
     try { await SHEETS.addClinic(d); this.closeModal('modal-cli'); this.toast('✅ 門診紀錄已儲存'); this.loadCliRec(); }
     catch(e) { this.toast('❌ 儲存失敗: ' + e.message); }
+  },
+
+  // ── Quick Add from 自費醫材 ──
+  openQuickAdd(brand, product, price) {
+    document.getElementById('qa-brand').textContent = brand;
+    document.getElementById('qa-product').textContent = product;
+    document.getElementById('qa-price').textContent = price ? '$' + Number(price).toLocaleString() : '無價格';
+    document.getElementById('qa-qty').value = 1;
+    document.getElementById('qa-brand-val').value = brand;
+    document.getElementById('qa-product-val').value = product;
+    document.getElementById('qa-price-val').value = price;
+    document.getElementById('modal-qa').classList.add('open');
+  },
+
+  async saveQuickAdd() {
+    const brand   = document.getElementById('qa-brand-val').value;
+    const product = document.getElementById('qa-product-val').value;
+    const price   = document.getElementById('qa-price-val').value;
+    const qty     = parseInt(document.getElementById('qa-qty').value) || 1;
+    try {
+      await SHEETS.quickAddMat(brand, product, price, qty);
+      document.getElementById('modal-qa').classList.remove('open');
+      this.toast(`✅ 已新增 ${product} x${qty} 到骨材記錄`);
+    } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
+  },
+
+  // ── Quick Add Mat from selfpay button ──
+  async quickAddMat(brand, product, price) {
+    const now = new Date();
+    const date = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
+    try {
+      await SHEETS.addMat({ date, brand, product, price, qty: '1' });
+      this.toast(`✅ 已新增 ${product}`);
+    } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
   },
 
   // ── Toast ──

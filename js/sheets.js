@@ -60,15 +60,22 @@ const SHEETS = {
     const rows = await this.read(this.T.matRec, 'A2:H500');
     return rows.filter(r => r[0]).map((r, i) => ({
       _row: i + 2, date: r[0] || '', brand: r[1] || '',
-      product: r[2] || '', price: r[3] || '', qty: r[4] || ''
+      product: r[2] || '', price: r[3] || '', qty: r[4] || '',
+      usageId: r[5] || '', done: r[6] || '', todayNew: r[7] || ''
     })).sort((a, b) => b.date.localeCompare(a.date));
   },
 
   async loadMatProducts() {
-    const rows = await this.read(this.T.matProd, 'A2:D200');
-    return rows.filter(r => r[0]).map((r, i) => ({
-      _row: i + 2, brand: r[0] || '', product: r[1] || '',
-      price: r[2] || '', hospital: r[3] || ''
+    // A=ItemID, B=廠牌, C=產品, D=類型, E=單價, F=醫院
+    const rows = await this.read(this.T.matProd, 'A2:F300');
+    return rows.filter(r => r[1]).map((r, i) => ({
+      _row: i + 2,
+      itemId:   r[0] || '',
+      brand:    r[1] || '',
+      product:  r[2] || '',
+      type:     r[3] || '',
+      price:    r[4] || '',
+      hospital: r[5] || ''
     }));
   },
 
@@ -124,7 +131,22 @@ const SHEETS = {
 
   // ── Writers ──
   async addOp(d)     { return this.append(this.T.op,      [[d.date, d.area, d.name, d.type, d.opName, d.location, d.implant, d.note]]); },
-  async addMat(d)    { return this.append(this.T.matRec,  [[d.date, d.brand, d.product, d.qty, d.price]]); },
+  async addMat(d) {
+    // A=日期, B=廠牌, C=產品, D=單價, E=數量, F=UsageID, G=Done, H=今日新增
+    const usageId = Math.random().toString(36).substring(2, 10);
+    const row = [d.date, d.brand, d.product, d.price, d.qty, usageId, 'false', 'TRUE'];
+    return this.append(this.T.matRec, [row]);
+  },
+
+  // Quick add from 自費醫材 button - matches 骨材記錄 schema
+  // A=日期, B=廠牌, C=產品, D=單價, E=數量, F=UsageID, G=Done
+  async quickAddMat(brand, product, price, qty) {
+    const now = new Date();
+    const month = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
+    const usageId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+    const row = [month, brand, product, price, qty, usageId, 'false'];
+    return this.append(this.T.matRec, [row]);
+  },
   async addCode(d)   { return this.append(this.T.codeRec, [[d.date, d.name, d.code, d.price, d.qty, d.area]]); },
   async addClinic(d) { return this.append(this.T.clinic,  [[d.date, d.product, d.qty, d.total]]); },
 };
