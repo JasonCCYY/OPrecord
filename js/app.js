@@ -50,7 +50,7 @@ const APP = {
     else if (tab === 'material') this.switchMat(this.subMat);
     else if (tab === 'clinic')   this.switchCli(this.subCli);
 
-    document.getElementById('fab').style.display = 'flex';
+    document.getElementById('fab').style.display = this.tab === 'surgery' ? 'flex' : 'none';
   },
 
   bindSubTabs() {
@@ -129,7 +129,12 @@ const APP = {
       groups.forEach(([m, rows]) => {
         const total = rows.reduce((s, r) => s + (parseFloat(r.price) * parseInt(r.qty || 1) || 0), 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        const sorted = [...rows].sort((a, b) => APP.sortBrands(a.brand||'', b.brand||''));
+        const sorted = [...rows].sort((a, b) => {
+          const aN = a.todayNew&&a.todayNew.toString().toUpperCase()==='TRUE';
+          const bN = b.todayNew&&b.todayNew.toString().toUpperCase()==='TRUE';
+          if(aN&&!bN) return -1; if(!aN&&bN) return 1;
+          return APP.sortBrands(a.brand||'',b.brand||'');
+        });
         sorted.forEach((r, ri) => {
           const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
           const isDone = r.done && r.done.toString().toLowerCase() === 'true';
@@ -143,7 +148,7 @@ const APP = {
             ? `<button class="done-btn" onclick="event.stopPropagation();APP.markDone(${r._row})" title="標記完成">☑</button>`
             : '<span style="width:32px;flex-shrink:0"></span>';
           const rowData = encodeURIComponent(JSON.stringify({_row:r._row,brand:r.brand,product:r.product,date:r.date,price:r.price,qty:r.qty,done:r.done,todayNew:r.todayNew}));
-          html += `<div class="${rowCls}" onclick="APP.openMatDetail('${rowData}')">
+          html += `<div class="${rowCls}" data-mat='${rowData}'>
             ${dot}
             <div class="item-brand">${r.brand}</div>
             <div class="item-product">${r.product}${subtotal}</div>
@@ -154,6 +159,13 @@ const APP = {
         });
       });
       el.innerHTML = html;
+      // Use event delegation for mobile touch compatibility
+      el.querySelectorAll('[data-mat]').forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.done-btn')) return; // Don't open detail when clicking done btn
+          APP.openMatDetail(row.getAttribute('data-mat'));
+        });
+      });
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
@@ -187,6 +199,7 @@ const APP = {
         });
       });
       el.innerHTML = html;
+      this.initSwipe(el, '.swipeable', row => APP.openSelfPayDetail(row.getAttribute('data-selfpay')));
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
@@ -198,19 +211,36 @@ const APP = {
       const items = await SHEETS.loadOpCodes();
       if (!items.length) { el.innerHTML = this.empty(); return; }
       let html = '';
+      // Group by area, 中正 first then 右昌 then others
+      const areaOrder = ['中正','右昌'];
       const groups = {};
-      items.forEach(r => { (groups[r.area || '通用'] = groups[r.area || '通用'] || []).push(r); });
-      Object.entries(groups).forEach(([area, rows]) => {
+      items.forEach(r => { const a = r.area||'通用'; (groups[a]=groups[a]||[]).push(r); });
+      const sortedAreas = Object.keys(groups).sort((a,b) => {
+        const ai = areaOrder.indexOf(a), bi = areaOrder.indexOf(b);
+        if(ai>=0 && bi>=0) return ai-bi;
+        if(ai>=0) return -1; if(bi>=0) return 1;
+        return a.localeCompare(b,'zh-TW');
+      });
+      sortedAreas.forEach(area => {
+        const rows = groups[area].sort((a,b) => APP.sortBrands(a.name||'',b.name||''));
         html += `<div class="month-hdr">${area}</div>`;
         rows.forEach(r => {
-          html += `<div class="item-row">
-            <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem">${r.code}</div>
-            <div class="item-product">${r.name}</div>
-            <div class="item-price">$${Number(String(r.price).replace(/,/g,"")).toLocaleString()}</div>
+          const cleanP = parseFloat(String(r.price).replace(/,/g,''))||0;
+          const safeN = r.name.replace(/'/g,"\'"), safeC = r.code.replace(/'/g,"\'");
+          const safeP = String(r.price).replace(/,/g,''), safeA = r.area.replace(/'/g,"\'");
+          html += `<div class="item-row swipeable" data-opcode='${encodeURIComponent(JSON.stringify({_row:r._row,code:r.code,name:r.name,price:r.price,area:r.area}))}'>
+            <div class="swipe-content">
+              <div class="item-brand" style="font-family:'JetBrains Mono',monospace;font-size:.76rem;width:52px">${r.code}</div>
+              <div class="item-product">${r.name}</div>
+              <div class="item-price">${cleanP?'$'+cleanP.toLocaleString():''}</div>
+              <button class="scalpel-btn" onclick="event.stopPropagation();APP.quickAddCode('${safeN}','${safeC}','${safeP}','${safeA}')" title="新增到代碼紀錄">＋</button>
+            </div>
+            <div class="swipe-delete" onclick="APP.deleteOpCode(${r._row})">刪除</div>
           </div>`;
         });
       });
       el.innerHTML = html;
+      this.initSwipe(el, '.swipeable', r => APP.openOpCodeDetail(r.getAttribute('data-opcode')));
     } catch(e) { el.innerHTML = this.err(e); }
   },
 
@@ -231,7 +261,17 @@ const APP = {
           return s + p * q;
         }, 0);
         html += `<div class="month-hdr">${m} <span class="month-badge">$${total.toLocaleString()}</span></div>`;
-        rows.forEach(r => {
+        // Sort: today-new first, then 中正>右昌, then English>Chinese
+        const areaOrd = ['中正','右昌'];
+        const sortedRows = [...rows].sort((a,b) => {
+          const aN = a.todayNew&&a.todayNew.toString().toUpperCase()==='TRUE';
+          const bN = b.todayNew&&b.todayNew.toString().toUpperCase()==='TRUE';
+          if(aN&&!bN) return -1; if(!aN&&bN) return 1;
+          const ai=areaOrd.indexOf(a.area), bi=areaOrd.indexOf(b.area);
+          if(ai>=0&&bi>=0&&ai!==bi) return ai-bi;
+          return APP.sortBrands(a.name||'',b.name||'');
+        });
+        sortedRows.forEach(r => {
           const isNew = r.todayNew && r.todayNew.toString().toUpperCase() === 'TRUE';
           const cleanP = parseFloat(String(r.price).replace(/,/g,'')) || 0;
           const dot = isNew ? '<span class="new-dot" title="今日新增"></span>' : '<span class="new-dot-ph"></span>';
@@ -257,11 +297,14 @@ const APP = {
     try {
       const recs = await SHEETS.loadEstimate();
       if (!recs.length) { el.innerHTML = this.empty(); return; }
+      const fmt = v => v ? Number(String(v).replace(/,/g,'')).toLocaleString() : '-';
       el.innerHTML = recs.map(r => `<div class="est-row">
         <div class="est-month">${r.month}</div>
-        <div class="est-total">${r.estimate ? Number(String(r.estimate).replace(/,/g,"")).toLocaleString() : '-'}</div>
-        <div class="est-val">${r.material ? Number(String(r.material).replace(/,/g,"")).toLocaleString() : '-'}</div>
-        <div class="est-val">${r.zhongzheng ? Number(String(r.zhongzheng).replace(/,/g,"")).toLocaleString() : '-'}</div>
+        <div class="est-total">${fmt(r.estimate)}</div>
+        <div class="est-val">${fmt(r.material)}</div>
+        <div class="est-val">${fmt(r.clinic)}</div>
+        <div class="est-val">${fmt(r.zhongzheng)}</div>
+        <div class="est-val">${fmt(r.youchang)}</div>
       </div>`).join('');
     } catch(e) { el.innerHTML = this.err(e); }
   },
@@ -454,8 +497,19 @@ const APP = {
     document.getElementById('me-date').value    = r.date;
     document.getElementById('me-price').value   = String(r.price||'').replace(/,/g,'');
     document.getElementById('me-qty').value     = r.qty || 1;
+    // Set Done toggle
+    const isDone = r.done && r.done.toString().toLowerCase() === 'true';
+    document.getElementById('me-done-y').classList.toggle('on', isDone);
+    document.getElementById('me-done-n').classList.toggle('on', !isDone);
+    document.getElementById('me-done-val').value = isDone ? 'true' : 'false';
     document.getElementById('md-view').style.display = 'none';
     document.getElementById('md-edit').style.display = '';
+  },
+
+  toggleDone(val) {
+    document.getElementById('me-done-val').value = val;
+    document.getElementById('me-done-y').classList.toggle('on', val === 'true');
+    document.getElementById('me-done-n').classList.toggle('on', val === 'false');
   },
 
   closeMatEdit() {
@@ -470,6 +524,7 @@ const APP = {
       date:    document.getElementById('me-date').value.trim(),
       price:   document.getElementById('me-price').value,
       qty:     document.getElementById('me-qty').value,
+      done:    document.getElementById('me-done-val').value,
     };
     try {
       await SHEETS.updateMatRow(this._editRow, d);
@@ -477,6 +532,16 @@ const APP = {
       this.toast('✅ 已更新');
       this.loadMatRec();
     } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
+  },
+
+  async deleteMatRow() {
+    if (!confirm('確定刪除這筆紀錄？')) return;
+    try {
+      await SHEETS.deleteMatRow(this._editRow);
+      this.closeModal('modal-mat-detail');
+      this.toast('🗑 已刪除');
+      this.loadMatRec();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 
   async markDone(row) {
@@ -497,6 +562,156 @@ const APP = {
       await SHEETS.addMat({ date, brand, product, price: cleanPrice, qty: '1' });
       this.toast(`✅ 已新增 ${product}`);
     } catch(e) { this.toast('❌ 新增失敗: ' + e.message); }
+  },
+
+  // ── Swipe-to-delete (touch + mouse) ──
+  initSwipe(container, selector, onTap) {
+    container.querySelectorAll(selector).forEach(el => {
+      let startX = 0, startY = 0, dx = 0, swiped = false;
+      const content = el.querySelector('.swipe-content');
+      const del = el.querySelector('.swipe-delete');
+
+      const onStart = e => {
+        startX = (e.touches?.[0]||e).clientX;
+        startY = (e.touches?.[0]||e).clientY;
+        dx = 0; swiped = false;
+        content.style.transition = 'none';
+      };
+      const onMove = e => {
+        dx = (e.touches?.[0]||e).clientX - startX;
+        const dy = Math.abs((e.touches?.[0]||e).clientY - startY);
+        if(dy > 10 && Math.abs(dx) < dy) return;
+        if(dx < 0) {
+          content.style.transform = `translateX(${Math.max(dx,-80)}px)`;
+          e.preventDefault();
+        }
+      };
+      const onEnd = () => {
+        content.style.transition = 'transform 0.2s';
+        if(dx < -40) {
+          content.style.transform = 'translateX(-80px)';
+          del.style.width = '80px';
+          swiped = true;
+        } else {
+          content.style.transform = '';
+          del.style.width = '0';
+          swiped = false;
+        }
+      };
+      el.addEventListener('touchstart', onStart, {passive:true});
+      el.addEventListener('touchmove', onMove, {passive:false});
+      el.addEventListener('touchend', onEnd);
+      el.addEventListener('mousedown', onStart);
+      el.addEventListener('mousemove', onMove);
+      el.addEventListener('mouseup', onEnd);
+
+      el.addEventListener('click', e => {
+        if(swiped) { e.stopPropagation(); return; }
+        if(e.target.closest('.scalpel-btn,.swipe-delete')) return;
+        onTap(el);
+      });
+    });
+  },
+
+  // ── OP Code detail + quick add ──
+  quickAddCode(name, code, price, area) {
+    SHEETS.quickAddCode({name, code, price, area})
+      .then(() => this.toast(`✅ 已新增 ${name}`))
+      .catch(e => this.toast('❌ 新增失敗: ' + e.message));
+  },
+
+  openOpCodeDetail(encoded) {
+    const r = JSON.parse(decodeURIComponent(encoded));
+    this._editOpCode = r;
+    document.getElementById('ocd-code').textContent  = r.code;
+    document.getElementById('ocd-name').textContent  = r.name;
+    const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+    document.getElementById('ocd-price').textContent = cleanP ? '$'+cleanP.toLocaleString() : '-';
+    document.getElementById('ocd-area').textContent  = r.area;
+    document.getElementById('ocd-view').style.display = '';
+    document.getElementById('ocd-edit').style.display = 'none';
+    this.openModal('modal-opcode-detail');
+  },
+
+  openOpCodeEdit() {
+    const r = this._editOpCode;
+    document.getElementById('oce-code').value  = r.code;
+    document.getElementById('oce-name').value  = r.name;
+    document.getElementById('oce-price').value = String(r.price||'').replace(/,/g,'');
+    document.getElementById('oce-area').value  = r.area;
+    document.getElementById('ocd-view').style.display = 'none';
+    document.getElementById('ocd-edit').style.display = '';
+  },
+
+  async saveOpCodeEdit() {
+    const r = this._editOpCode;
+    const d = {
+      code:  document.getElementById('oce-code').value.trim(),
+      name:  document.getElementById('oce-name').value.trim(),
+      price: document.getElementById('oce-price').value,
+      area:  document.getElementById('oce-area').value.trim(),
+    };
+    try {
+      await SHEETS.updateOpCode(r._row, d);
+      this.closeModal('modal-opcode-detail');
+      this.toast('✅ 已更新');
+      this.loadOpCode();
+    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
+  },
+
+  async deleteOpCode(row) {
+    if(!confirm('確定刪除？')) return;
+    try {
+      await SHEETS.clearRow(SHEETS.T.opCode, row, 'A', 'E');
+      this.toast('🗑 已刪除'); this.loadOpCode();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
+  },
+
+  // ── Self-pay detail ──
+  openSelfPayDetail(encoded) {
+    const r = JSON.parse(decodeURIComponent(encoded));
+    this._editSelfPay = r;
+    document.getElementById('spd-brand').textContent   = r.brand;
+    document.getElementById('spd-product').textContent = r.product;
+    const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+    document.getElementById('spd-price').textContent   = cleanP ? '$'+cleanP.toLocaleString() : '-';
+    document.getElementById('spd-hospital').textContent= r.hospital;
+    document.getElementById('spd-view').style.display  = '';
+    document.getElementById('spd-edit').style.display  = 'none';
+    this.openModal('modal-selfpay-detail');
+  },
+
+  openSelfPayEdit() {
+    const r = this._editSelfPay;
+    document.getElementById('spe-brand').value   = r.brand;
+    document.getElementById('spe-product').value = r.product;
+    document.getElementById('spe-price').value   = String(r.price||'').replace(/,/g,'');
+    document.getElementById('spe-hospital').value= r.hospital;
+    document.getElementById('spd-view').style.display = 'none';
+    document.getElementById('spd-edit').style.display = '';
+  },
+
+  async saveSelfPayEdit() {
+    const r = this._editSelfPay;
+    const d = {
+      brand:    document.getElementById('spe-brand').value.trim(),
+      product:  document.getElementById('spe-product').value.trim(),
+      price:    document.getElementById('spe-price').value,
+      hospital: document.getElementById('spe-hospital').value.trim(),
+    };
+    try {
+      await SHEETS.updateSelfPay(r._row, d);
+      this.closeModal('modal-selfpay-detail');
+      this.toast('✅ 已更新'); this.loadSelfPay();
+    } catch(e) { this.toast('❌ 更新失敗: ' + e.message); }
+  },
+
+  async deleteSelfPay(row) {
+    if(!confirm('確定刪除？')) return;
+    try {
+      await SHEETS.clearRow(SHEETS.T.matProd, row, 'A', 'F');
+      this.toast('🗑 已刪除'); this.loadSelfPay();
+    } catch(e) { this.toast('❌ 刪除失敗: ' + e.message); }
   },
 
   // ── Sort: English brands first, then Chinese ──

@@ -80,45 +80,46 @@ const SHEETS = {
   },
 
   async loadOpCodes() {
-    const rows = await this.read(this.T.opCode, 'A2:D200');
+    // A=代碼, B=術式, C=單價, D=院區, E=ID
+    const rows = await this.read(this.T.opCode, 'A2:E200');
     return rows.filter(r => r[0]).map((r, i) => ({
-      _row: i + 2, code: r[0] || '', name: r[1] || '',
-      area: r[2] || '', price: r[3] || ''
+      _row: i + 2,
+      code:  r[0] || '',
+      name:  r[1] || '',
+      price: r[2] || '',
+      area:  r[3] || '',
+      itemId: r[4] || ''
     }));
   },
 
   async loadCodeRecords() {
-    // Read header row to auto-detect columns
-    const hRow = await this.read(this.T.codeRec, 'A1:J1');
-    const h = (hRow[0] || []).map(x => (x||'').trim());
-    const ci = (names, fb) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return fb; };
-    const iDate  = ci(['日期'], 0);
-    const iName  = ci(['術式','名稱'], 1);
-    const iCode  = ci(['代碼'], 2);
-    const iPrice = ci(['單價'], 3);
-    const iQty   = ci(['數量'], 4);
-    const iArea  = ci(['院區'], 5);
-    const iToday = ci(['今日新增'], -1);
-
-    const rows = await this.read(this.T.codeRec, 'A2:J500');
-    return rows.filter(r => r[iDate]).map((r, i) => ({
+    // A=日期,B=術式,C=單價,D=代碼,E=院區,F=數量,G=UsageID,H=今日新增
+    const rows = await this.read(this.T.codeRec, 'A2:H500');
+    return rows.filter(r => r[0]).map((r, i) => ({
       _row: i + 2,
-      date:     r[iDate]  || '',
-      name:     r[iName]  || '',
-      code:     r[iCode]  || '',
-      price:    r[iPrice] || '',
-      qty:      r[iQty]   || '',
-      area:     r[iArea]  || '',
-      todayNew: iToday >= 0 ? (r[iToday] || '') : ''
+      date:     r[0] || '',
+      name:     r[1] || '',
+      price:    r[2] || '',
+      code:     r[3] || '',
+      area:     r[4] || '',
+      qty:      r[5] || '',
+      usageId:  r[6] || '',
+      todayNew: r[7] || ''
     })).sort((a, b) => b.date.localeCompare(a.date));
   },
 
   async loadEstimate() {
-    const rows = await this.read(this.T.estimate, 'A2:D50');
+    // A=月份,B=醫材,C=門診,D=中正,E=右昌,F=預估
+    const rows = await this.read(this.T.estimate, 'A2:F50');
     return rows.filter(r => r[0]).map((r, i) => ({
-      _row: i + 2, month: r[0] || '', estimate: r[1] || '',
-      material: r[2] || '', zhongzheng: r[3] || ''
-    })).sort((a, b) => b.month.localeCompare(a.month));
+      _row: i + 2,
+      month:      r[0] || '',
+      material:   r[1] || '',
+      clinic:     r[2] || '',
+      zhongzheng: r[3] || '',
+      youchang:   r[4] || '',
+      estimate:   r[5] || ''
+    })); // Keep sheet order (no sort)
   },
 
   async loadClinicProducts() {
@@ -148,9 +149,36 @@ const SHEETS = {
   },
 
   // ── Writers ──
+  async updateOpCode(row, d) {
+    // A=代碼,B=術式,C=單價,D=院區
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.opCode+'!A'+row+':D'+row)}?valueInputOption=USER_ENTERED`;
+    const r = await fetch(url, { method:'PUT', headers:{...this.hdrs(),'Content-Type':'application/json'}, body: JSON.stringify({values:[[d.code,d.name,d.price,d.area]]}) });
+    if(!r.ok) throw new Error(`更新失敗(${r.status})`);
+    return r.json();
+  },
+
+  async updateSelfPay(row, d) {
+    // A=ItemID(skip),B=廠牌,C=產品,D=類型(skip),E=單價,F=醫院
+    // Update B,C,E,F — use batchUpdate via individual calls
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matProd+'!B'+row+':C'+row)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{...this.hdrs(),'Content-Type':'application/json'}, body: JSON.stringify({values:[[d.brand,d.product]]}) });
+    const url2 = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matProd+'!E'+row+':F'+row)}?valueInputOption=USER_ENTERED`;
+    const r = await fetch(url2, { method:'PUT', headers:{...this.hdrs(),'Content-Type':'application/json'}, body: JSON.stringify({values:[[d.price,d.hospital]]}) });
+    if(!r.ok) throw new Error(`更新失敗(${r.status})`);
+    return r.json();
+  },
+
+  async clearRow(tab, row, colStart, colEnd) {
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(tab+'!'+colStart+row+':'+colEnd+row)}:clear`;
+    const r = await fetch(url, { method:'POST', headers:{...this.hdrs(),'Content-Type':'application/json'} });
+    if(!r.ok) throw new Error(`刪除失敗(${r.status})`);
+    return r.json();
+  },
+
   async addOp(d)     { return this.append(this.T.op,      [[d.date, d.area, d.name, d.type, d.opName, d.location, d.implant, d.note]]); },
   async updateMatRow(row, d) {
-    // Update columns A-E: 日期,廠牌,產品,單價,數量
+    // Update columns A-G: 日期,廠牌,產品,單價,數量,UsageID(skip),Done
+    // We update A:E and G separately to preserve UsageID in F
     const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matRec + '!A' + row + ':E' + row)}?valueInputOption=USER_ENTERED`;
     const r = await fetch(url, {
       method: 'PUT',
@@ -158,6 +186,27 @@ const SHEETS = {
       body: JSON.stringify({ values: [[d.date, d.brand, d.product, d.price, d.qty]] })
     });
     if (!r.ok) throw new Error(`更新失敗(${r.status})`);
+    // Update Done in column G
+    if (d.done !== undefined) {
+      const urlG = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matRec + '!G' + row)}?valueInputOption=USER_ENTERED`;
+      await fetch(urlG, {
+        method: 'PUT',
+        headers: { ...this.hdrs(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [[d.done]] })
+      });
+    }
+    return r.json();
+  },
+
+  async deleteMatRow(row) {
+    // Clear the row contents (Sheets API doesn't truly delete rows easily without batchUpdate)
+    // We clear all cells A:H for that row
+    const url = `${this.BASE}/${this.ID}/values/${encodeURIComponent(this.T.matRec + '!A' + row + ':H' + row)}:clear`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { ...this.hdrs(), 'Content-Type': 'application/json' }
+    });
+    if (!r.ok) throw new Error(`刪除失敗(${r.status})`);
     return r.json();
   },
 
@@ -189,6 +238,18 @@ const SHEETS = {
     const row = [month, brand, product, price, qty, usageId, 'false'];
     return this.append(this.T.matRec, [row]);
   },
-  async addCode(d)   { return this.append(this.T.codeRec, [[d.date, d.name, d.code, d.price, d.qty, d.area]]); },
+  async addCode(d) {
+    // A=日期,B=術式,C=單價,D=代碼,E=院區,F=數量,G=UsageID,H=今日新增
+    const usageId = Math.random().toString(36).substring(2, 10);
+    return this.append(this.T.codeRec, [[d.date, d.name, d.price, d.code, d.area, d.qty, usageId, d.todayNew||'']]);
+  },
+
+  async quickAddCode(d) {
+    // Quick add from OP代碼 scalpel button
+    const now = new Date();
+    const date = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
+    const usageId = Math.random().toString(36).substring(2, 10);
+    return this.append(this.T.codeRec, [[date, d.name, d.price, d.code, d.area, '1', usageId, 'TRUE']]);
+  },
   async addClinic(d) { return this.append(this.T.clinic,  [[d.date, d.product, d.qty, d.total]]); },
 };

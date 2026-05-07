@@ -123,9 +123,13 @@
 
     <!-- Estimate -->
     <div id="pg-estimate" class="page">
-      <div class="est-hdr">
-        <div class="th">月份</div><div class="th" style="text-align:right">預估</div>
-        <div class="th" style="text-align:right">醫材</div><div class="th" style="text-align:right">中正</div>
+      <div class="est-hdr" style="grid-template-columns:80px 1fr 80px 80px 60px 60px">
+        <div class="th">月份</div>
+        <div class="th" style="text-align:right">預估</div>
+        <div class="th" style="text-align:right">醫材</div>
+        <div class="th" style="text-align:right">門診</div>
+        <div class="th" style="text-align:right">中正</div>
+        <div class="th" style="text-align:right">右昌</div>
       </div>
       <div id="estimate-list"></div>
     </div>
@@ -169,7 +173,7 @@
 </div><!-- /app -->
 
 <!-- FAB -->
-<button class="fab" id="fab" style="display:none">
+<button class="fab" id="fab" style="display:none;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 16px)">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
   </svg>
@@ -357,9 +361,75 @@
       <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="me-price"></div>
       <div class="fg"><label class="fg-label">數量</label><input class="f-input" type="number" id="me-qty" min="1"></div>
     </div>
+    <div class="fg">
+      <label class="fg-label">Done</label>
+      <input type="hidden" id="me-done-val" value="false">
+      <div class="chip-row">
+        <button class="chip on" id="me-done-n" onclick="APP.toggleDone('false')">N（未完成）</button>
+        <button class="chip" id="me-done-y" onclick="APP.toggleDone('true')">Y（已完成）</button>
+      </div>
+    </div>
     <div class="modal-actions">
+      <button class="btn-delete" onclick="APP.deleteMatRow()">🗑 刪除</button>
       <button class="btn-cancel" onclick="APP.closeMatEdit()">取消</button>
       <button class="btn-save" onclick="APP.saveMatEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- OP Code Detail Modal -->
+<div class="modal-bd" id="modal-opcode-detail" onclick="if(event.target===this)APP.closeModal('modal-opcode-detail')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">代碼詳情</div>
+  <div id="ocd-view">
+    <div class="md-field"><div class="md-label">代碼</div><div class="md-val" id="ocd-code"></div></div>
+    <div class="md-field"><div class="md-label">術式</div><div class="md-val" id="ocd-name"></div></div>
+    <div class="md-field"><div class="md-label">單價</div><div class="md-val" id="ocd-price"></div></div>
+    <div class="md-field"><div class="md-label">院區</div><div class="md-val" id="ocd-area"></div></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="APP.closeModal('modal-opcode-detail')">關閉</button>
+      <button class="btn-save" onclick="APP.openOpCodeEdit()">✏️ 修改</button>
+    </div>
+  </div>
+  <div id="ocd-edit" style="display:none">
+    <div class="fg"><label class="fg-label">代碼</label><input class="f-input" type="text" id="oce-code"></div>
+    <div class="fg"><label class="fg-label">術式</label><input class="f-input" type="text" id="oce-name"></div>
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="oce-price"></div>
+    <div class="fg"><label class="fg-label">院區</label><input class="f-input" type="text" id="oce-area"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('ocd-view').style.display='';document.getElementById('ocd-edit').style.display='none'">取消</button>
+      <button class="btn-save" onclick="APP.saveOpCodeEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Self-pay Detail Modal -->
+<div class="modal-bd" id="modal-selfpay-detail" onclick="if(event.target===this)APP.closeModal('modal-selfpay-detail')">
+<div class="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-title">自費醫材詳情</div>
+  <div id="spd-view">
+    <div class="md-field"><div class="md-label">廠牌</div><div class="md-val" id="spd-brand"></div></div>
+    <div class="md-field"><div class="md-label">產品</div><div class="md-val" id="spd-product"></div></div>
+    <div class="md-field"><div class="md-label">單價</div><div class="md-val" id="spd-price"></div></div>
+    <div class="md-field"><div class="md-label">醫院</div><div class="md-val" id="spd-hospital"></div></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="APP.closeModal('modal-selfpay-detail')">關閉</button>
+      <button class="btn-save" onclick="APP.openSelfPayEdit()">✏️ 修改</button>
+    </div>
+  </div>
+  <div id="spd-edit" style="display:none">
+    <div class="fg"><label class="fg-label">廠牌</label><input class="f-input" type="text" id="spe-brand"></div>
+    <div class="fg"><label class="fg-label">產品</label><input class="f-input" type="text" id="spe-product"></div>
+    <div class="fg"><label class="fg-label">單價</label><input class="f-input" type="number" id="spe-price"></div>
+    <div class="fg"><label class="fg-label">醫院</label><input class="f-input" type="text" id="spe-hospital"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('spd-view').style.display='';document.getElementById('spd-edit').style.display='none'">取消</button>
+      <button class="btn-save" onclick="APP.saveSelfPayEdit()">儲存</button>
     </div>
   </div>
 </div>
