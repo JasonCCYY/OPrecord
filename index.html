@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -60,12 +61,14 @@
   </div>
 
   <!-- Surgery sub-tabs -->
+
   <div class="sub-tabs" id="sub-sx" style="display:none">
     <button class="sub-tab active" data-sub="sxList">手術紀錄</button>
     <button class="sub-tab" data-sub="track">追蹤</button>
   </div>
 
   <!-- Material sub-tabs -->
+
   <div class="sub-tabs" id="sub-mat" style="display:none">
     <button class="sub-tab active" data-sub="matRec">醫材記錄</button>
     <button class="sub-tab" data-sub="selfPay">自費醫材</button>
@@ -76,112 +79,114 @@
 
   <div id="content">
 
-    <!-- Surgery Page -->
-    <div id="pg-surgery" class="page active">
-      <div class="sub-page" id="pg-sx-list">
-        <div class="sx-wrap">
-          <table class="sx-table">
-            <thead><tr>
-              <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
-              <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
-            </tr></thead>
-            <tbody id="sx-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
+```
+<!-- Surgery Page -->
+<div id="pg-surgery" class="page active">
+  <div class="sub-page" id="pg-sx-list">
+    <div class="sx-wrap">
+      <table class="sx-table">
+        <thead><tr>
+          <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
+          <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
+        </tr></thead>
+        <tbody id="sx-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="sub-page" id="pg-track" style="display:none">
+    <div class="sx-wrap">
+      <table class="sx-table">
+        <thead><tr>
+          <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
+          <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
+        </tr></thead>
+        <tbody id="track-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Material Page — swipeable slides -->
+<div id="pg-material" class="page">
+  <div id="mat-swipe-container">
+    <div id="mat-swipe-inner">
+
+      <!-- Slide 0: 醫材記錄 -->
+      <div class="mat-slide" id="pg-mat-rec">
+        <div class="list-content">
+          <div class="col-hdr-row">
+            <span class="dot-ph"></span>
+            <span class="th col-brand">廠牌</span>
+            <span class="th col-product">產品</span>
+            <span class="th col-qty" style="text-align:center">數量</span>
+            <span class="th col-price" style="text-align:right">單價</span>
+            <span style="width:32px;flex-shrink:0"></span>
+          </div>
+          <div id="mat-rec-list"></div>
+        </div>
+      </div>
+
+      <!-- Slide 1: 自費醫材 -->
+      <div class="mat-slide" id="pg-selfpay">
+        <div class="list-content">
+          <div class="col-hdr-row">
+            <span class="th col-brand">廠牌</span>
+            <span class="th col-product">產品</span>
+            <span style="width:32px;flex-shrink:0"></span>
+            <span class="th col-price" style="text-align:right">單價</span>
+            <span class="th col-hosp" style="text-align:right">醫院</span>
+          </div>
+          <div id="selfpay-list"></div>
+        </div>
+      </div>
+
+      <!-- Slide 2: 代碼 -->
+      <div class="mat-slide" id="pg-opcode">
+        <div class="list-content">
+          <div class="col-hdr-row">
+            <span class="th col-code">代碼</span>
+            <span class="th col-product">術式</span>
+            <span style="width:32px;flex-shrink:0"></span>
+            <span class="th col-price" style="text-align:right">單價</span>
+          </div>
+          <div id="opcode-list"></div>
+        </div>
+      </div>
+
+      <!-- Slide 3: 代碼紀錄 -->
+      <div class="mat-slide" id="pg-code-rec">
+        <div class="list-content">
+          <div class="col-hdr-row">
+            <span class="dot-ph"></span>
+            <span class="th col-product">術式</span>
+            <span class="th col-code">代碼</span>
+            <span class="th col-price" style="text-align:right">單價</span>
+            <span class="th col-qty" style="text-align:center">量</span>
+            <span class="th col-area" style="text-align:right">院區</span>
+          </div>
+          <div id="code-rec-list"></div>
+        </div>
+      </div>
+
+      <!-- Slide 4: 預估 -->
+      <div class="mat-slide" id="pg-estimate">
+        <div class="est-table-wrap">
+          <table class="est-table">
+            <thead id="est-thead"><tr><th>項目</th></tr></thead>
+            <tbody id="est-tbody"></tbody>
           </table>
         </div>
       </div>
-      <div class="sub-page" id="pg-track" style="display:none">
-        <div class="sx-wrap">
-          <table class="sx-table">
-            <thead><tr>
-              <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
-              <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
-            </tr></thead>
-            <tbody id="track-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
-    <!-- Material Page — swipeable slides -->
-    <div id="pg-material" class="page">
-      <div id="mat-swipe-container">
-        <div id="mat-swipe-inner">
+    </div><!-- /mat-swipe-inner -->
+  </div><!-- /mat-swipe-container -->
+</div><!-- /pg-material -->
 
-          <!-- Slide 0: 醫材記錄 -->
-          <div class="mat-slide" id="pg-mat-rec">
-            <div class="list-content">
-              <div class="col-hdr-row">
-                <span class="dot-ph"></span>
-                <span class="th col-brand">廠牌</span>
-                <span class="th col-product">產品</span>
-                <span class="th col-qty" style="text-align:center">數量</span>
-                <span class="th col-price" style="text-align:right">單價</span>
-                <span style="width:32px;flex-shrink:0"></span>
-              </div>
-              <div id="mat-rec-list"></div>
-            </div>
-          </div>
-
-          <!-- Slide 1: 自費醫材 -->
-          <div class="mat-slide" id="pg-selfpay">
-            <div class="list-content">
-              <div class="col-hdr-row">
-                <span class="th col-brand">廠牌</span>
-                <span class="th col-product">產品</span>
-                <span style="width:32px;flex-shrink:0"></span>
-                <span class="th col-price" style="text-align:right">單價</span>
-                <span class="th col-hosp" style="text-align:right">醫院</span>
-              </div>
-              <div id="selfpay-list"></div>
-            </div>
-          </div>
-
-          <!-- Slide 2: 代碼 -->
-          <div class="mat-slide" id="pg-opcode">
-            <div class="list-content">
-              <div class="col-hdr-row">
-                <span class="th col-code">代碼</span>
-                <span class="th col-product">術式</span>
-                <span style="width:32px;flex-shrink:0"></span>
-                <span class="th col-price" style="text-align:right">單價</span>
-              </div>
-              <div id="opcode-list"></div>
-            </div>
-          </div>
-
-          <!-- Slide 3: 代碼紀錄 -->
-          <div class="mat-slide" id="pg-code-rec">
-            <div class="list-content">
-              <div class="col-hdr-row">
-                <span class="dot-ph"></span>
-                <span class="th col-product">術式</span>
-                <span class="th col-code">代碼</span>
-                <span class="th col-price" style="text-align:right">單價</span>
-                <span class="th col-qty" style="text-align:center">量</span>
-                <span class="th col-area" style="text-align:right">院區</span>
-              </div>
-              <div id="code-rec-list"></div>
-            </div>
-          </div>
-
-          <!-- Slide 4: 預估 -->
-          <div class="mat-slide" id="pg-estimate">
-            <div class="est-table-wrap">
-              <table class="est-table">
-                <thead id="est-thead"><tr><th>項目</th></tr></thead>
-                <tbody id="est-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div><!-- /mat-swipe-inner -->
-      </div><!-- /mat-swipe-container -->
-    </div><!-- /pg-material -->
-
-    <!-- Clinic Page -->
-    <div id="pg-clinic" class="page">
-      <div class="list-content" id="clinic-content"></div>
-    </div>
+<!-- Clinic Page -->
+<div id="pg-clinic" class="page">
+  <div class="list-content" id="clinic-content"></div>
+</div>
+```
 
   </div><!-- /content -->
 
@@ -205,6 +210,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- DETAIL MODAL -->
+
 <div class="modal-bd" id="modal-detail" onclick="if(event.target===this)APP.closeModal('modal-detail')">
 <div class="modal-sheet">
   <div class="modal-handle"></div>
@@ -219,6 +225,7 @@
 </div>
 
 <!-- EDIT MODALS -->
+
 <div class="modal-bd" id="modal-edit-sx" onclick="if(event.target===this)APP.closeModal('modal-edit-sx')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改手術紀錄</div>
@@ -331,6 +338,7 @@
 </div></div>
 
 <!-- NEW RECORD MODALS -->
+
 <div class="modal-bd" id="modal-op" onclick="if(event.target===this)APP.closeModal('modal-op')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增手術紀錄</div>
@@ -339,6 +347,8 @@
     <label class="fg-label">院區</label><input type="hidden" id="s-area-val" value="中正">
     <div class="chip-row"><button class="chip area on" onclick="APP.selectArea(this,'中正')">中正</button><button class="chip area" onclick="APP.selectArea(this,'右昌')">右昌</button></div>
   </div>
+  <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="s-mrn" placeholder="選填"></div>
+  <div class="fg" id="s-clinicid-wrap" style="display:none"><label class="fg-label">診所 ID</label><input class="f-input" type="text" id="s-clinicid" placeholder="右昌診所ID"></div>
   <div class="fg"><label class="fg-label">病患姓名</label><input class="f-input" type="text" id="s-name" placeholder="輸入姓名"></div>
   <div class="fg">
     <label class="fg-label">類型</label><input type="hidden" id="s-type-val" value="Joint">
@@ -424,7 +434,10 @@
 </div></div>
 
 <script src="js/auth.js"></script>
+
 <script src="js/sheets.js"></script>
+
 <script src="js/app.js"></script>
+
 </body>
 </html>
