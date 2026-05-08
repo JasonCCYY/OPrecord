@@ -539,10 +539,11 @@ const APP = {
       html += `<div class="clinic-section-hdr">自費項目</div>`;
       products.forEach(r => {
         const cleanP = String(r.price||'').replace(/,/g,'').trim();
-        html += `<div class="list-row">
-          <span class="col-product" style="font-weight:600">${r.name}</span>
-          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" style="margin-left:auto;margin-right:auto;flex-shrink:0">＋</button>
-          <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
+        html += `<div class="list-row" style="gap:8px">
+          <span style="font-weight:600;font-size:1rem;flex:none">${r.name}</span>
+          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" >＋</button>
+          <span style="flex:1"></span>
+          <span class="col-price" style="flex:none">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
         </div>`;
       });
 
@@ -563,7 +564,6 @@ const APP = {
           const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
           const _si=APP._storeRow(r);
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          const rowTotal=cleanP*(parseInt(r.qty)||1);
           html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS('clinic',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-date">${r.date.substring(5)}</span>
