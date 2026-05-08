@@ -19,6 +19,7 @@ const APP = {
     this.bindTabs();
     this.bindSubTabs();
     this.bindMatSwipe();
+    this.bindModalSwipe();
     document.getElementById('fab').addEventListener('click', () => this.fabClick());
     document.getElementById('loading').style.display = 'none';
     if (!AUTH.ok) {
@@ -173,6 +174,43 @@ const APP = {
     }, {passive: true});
   },
 
+
+  // ── Swipe down to close any open modal ──
+  bindModalSwipe() {
+    document.querySelectorAll('.modal-sheet').forEach(sheet => {
+      let startY = 0, dragging = false;
+      const modal = sheet.closest('.modal-bd');
+      if(!modal) return;
+      const modalId = modal.id;
+
+      sheet.addEventListener('touchstart', e => {
+        startY = e.touches[0].clientY;
+        dragging = false;
+      }, {passive: true});
+
+      sheet.addEventListener('touchmove', e => {
+        const dy = e.touches[0].clientY - startY;
+        if(dy > 10) {
+          dragging = true;
+          sheet.style.transform = `translateY(${Math.max(0,dy)}px)`;
+          sheet.style.transition = 'none';
+        }
+      }, {passive: true});
+
+      sheet.addEventListener('touchend', e => {
+        const dy = e.changedTouches[0].clientY - startY;
+        sheet.style.transition = '';
+        if(dy > 80) {
+          sheet.style.transform = '';
+          APP.closeModal(modalId);
+        } else {
+          sheet.style.transform = '';
+        }
+        dragging = false;
+      }, {passive: true});
+    });
+  },
+
   switchSx(sub) {
     this.subSx = sub;
     this._clearStore();
@@ -251,7 +289,7 @@ const APP = {
         const p=r.date.split('/');
         const day=p.length>=3?p[1].padStart(2,'0')+'/'+p[2].padStart(2,'0'):r.date.substring(5);
         const _si=APP._storeRow(r);
-        rows += `<tr class="sx-data-row" onclick="APP.openDetailS(\'sx\',${_si})">
+        rows += `<tr class="sx-data-row" onclick="APP.openDetailS('sx',${_si})">
           <td class="sx-date">${day}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
@@ -283,7 +321,7 @@ const APP = {
           rows += `<tr class="sx-month-row"><td colspan="8">${m}</td></tr>`;
         }
         const _si=APP._storeRow(r);
-        rows += `<tr class="sx-data-row" onclick="APP.openDetailS(\'track\',${_si})">
+        rows += `<tr class="sx-data-row" onclick="APP.openDetailS('track',${_si})">
           <td class="sx-date">${r.date.substring(5)}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
@@ -323,7 +361,7 @@ const APP = {
           const sub=cleanP&&qty>1?`<span class="sub-total">×${qty}=$${(cleanP*qty).toLocaleString()}</span>`:'';
           const _si=APP._storeRow(r);
           const isDone=r.done?.toLowerCase()==='true';
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'mat\',${_si})">
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS('mat',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}${sub}</span>
@@ -352,8 +390,8 @@ const APP = {
         html += `<div class="list-group-hdr">${brand}</div>`;
         rows.forEach(r => {
           const cleanP = String(r.price||'').replace(/,/g,'').trim();
-          const enc = encodeURIComponent(JSON.stringify(r));
-          html += `<div class="list-row" onclick="APP.openDetailS(\'selfpay\',${_si})">
+          const _si=APP._storeRow(r);
+          html += `<div class="list-row" onclick="APP.openDetailS('selfpay',${_si})">
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}</span>
             <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddMat('${r.brand.replace(/'/g,"\\'")}','${r.product.replace(/'/g,"\\'")}','${cleanP}')" title="新增到骨材記錄">＋</button>
@@ -389,9 +427,8 @@ const APP = {
         html += `<div class="list-group-hdr">${area}</div>`;
         rows.forEach(r => {
           const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          const enc = encodeURIComponent(JSON.stringify(r));
-          // Truncate name to avoid overflow
-          html += `<div class="list-row" onclick="APP.openDetailS(\'opcode\',${_si})">
+          const _si=APP._storeRow(r);
+          html += `<div class="list-row" onclick="APP.openDetailS('opcode',${_si})">
             <span class="col-code">${r.code}</span>
             <span class="col-product" title="${r.name}">${r.name}</span>
             <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddCode('${r.name.replace(/'/g,"\\'")}','${r.code}','${r.price}','${r.area}')" title="新增到代碼紀錄">＋</button>
@@ -428,7 +465,7 @@ const APP = {
           const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const _si=APP._storeRow(r);
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'coderec\',${_si})">
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS('coderec',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-product" title="${r.name}">${r.name}</span>
             <span class="col-code">${r.code}</span>
@@ -504,7 +541,7 @@ const APP = {
         const cleanP = String(r.price||'').replace(/,/g,'').trim();
         html += `<div class="list-row">
           <span class="col-product" style="font-weight:600">${r.name}</span>
-          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" style="margin:0 8px">＋</button>
+          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" style="margin-left:auto;margin-right:auto;flex-shrink:0">＋</button>
           <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
         </div>`;
       });
@@ -527,7 +564,7 @@ const APP = {
           const _si=APP._storeRow(r);
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const rowTotal=cleanP*(parseInt(r.qty)||1);
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'clinic\',${_si})">
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS('clinic',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-date">${r.date.substring(5)}</span>
             <span class="col-product">${r.product}</span>
