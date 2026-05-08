@@ -77,6 +77,12 @@ const APP = {
     if(!s) return '';
     return s.length > max ? s.substring(0, max) + '…' : s;
   },
+  // ── Row store (avoids HTML encoding issues in onclick) ──
+  _rowStore: [],
+  _storeRow(r) { this._rowStore.push(r); return this._rowStore.length - 1; },
+  _clearStore() { this._rowStore = []; },
+  _getRow(i) { return this._rowStore[i]; },
+
 
   // ── Tab routing ──
   bindTabs() {
@@ -85,6 +91,7 @@ const APP = {
 
   switchTab(tab) {
     this.tab = tab;
+    this._clearStore();
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
     document.getElementById('sub-mat').style.display  = tab==='material' ? 'flex' : 'none';
     document.getElementById('sub-sx').style.display   = tab==='surgery'  ? 'flex' : 'none';
@@ -103,13 +110,14 @@ const APP = {
 
   switchMat(sub) {
     this.subMat = sub;
+    this._clearStore();
     document.querySelectorAll('#sub-mat .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub===sub));
     const idx = this.MAT_SUBS.indexOf(sub);
     if(idx >= 0) {
       this.matSlideIdx = idx;
       this._applySlide(idx);
     }
-    document.getElementById('fab').style.display = (sub==='matRec'||sub==='codeRec') ? 'flex' : 'none';
+    document.getElementById('fab').style.display = 'none'; // FAB only for surgery
     document.getElementById('hdr-add-btn').style.display = 'none';
     const loaders = { matRec:()=>this.loadMatRec(), selfPay:()=>this.loadSelfPay(), opCode:()=>this.loadOpCode(), codeRec:()=>this.loadCodeRec(), estimate:()=>this.loadEstimate() };
     loaders[sub]?.();
@@ -167,6 +175,7 @@ const APP = {
 
   switchSx(sub) {
     this.subSx = sub;
+    this._clearStore();
     document.querySelectorAll('#sub-sx .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub===sub));
     document.querySelectorAll('#pg-surgery .sub-page').forEach(p => p.style.display='none');
     document.getElementById(sub==='sxList'?'pg-sx-list':'pg-track').style.display = 'flex';
@@ -241,8 +250,8 @@ const APP = {
         }
         const p=r.date.split('/');
         const day=p.length>=3?p[1].padStart(2,'0')+'/'+p[2].padStart(2,'0'):r.date.substring(5);
-        const enc=encodeURIComponent(JSON.stringify(r));
-        rows += `<tr class="sx-data-row" onclick="APP.openDetail('sx',${JSON.stringify(enc)})">
+        const _si=APP._storeRow(r);
+        rows += `<tr class="sx-data-row" onclick="APP.openDetailS(\'sx\',${_si})">
           <td class="sx-date">${day}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
@@ -273,8 +282,8 @@ const APP = {
           lastM=m;
           rows += `<tr class="sx-month-row"><td colspan="8">${m}</td></tr>`;
         }
-        const enc=encodeURIComponent(JSON.stringify(r));
-        rows += `<tr class="sx-data-row" onclick="APP.openDetail('track',${JSON.stringify(enc)})">
+        const _si=APP._storeRow(r);
+        rows += `<tr class="sx-data-row" onclick="APP.openDetailS(\'track\',${_si})">
           <td class="sx-date">${r.date.substring(5)}</td>
           <td class="sx-area">${r.area}</td>
           <td class="sx-name">${r.name}</td>
@@ -312,9 +321,9 @@ const APP = {
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const qty=parseInt(r.qty)||1;
           const sub=cleanP&&qty>1?`<span class="sub-total">×${qty}=$${(cleanP*qty).toLocaleString()}</span>`:'';
-          const enc=encodeURIComponent(JSON.stringify(r));
+          const _si=APP._storeRow(r);
           const isDone=r.done?.toLowerCase()==='true';
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('mat',${JSON.stringify(enc)})">
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'mat\',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}${sub}</span>
@@ -344,7 +353,7 @@ const APP = {
         rows.forEach(r => {
           const cleanP = String(r.price||'').replace(/,/g,'').trim();
           const enc = encodeURIComponent(JSON.stringify(r));
-          html += `<div class="list-row" onclick="APP.openDetail('selfpay',${JSON.stringify(enc)})">
+          html += `<div class="list-row" onclick="APP.openDetailS(\'selfpay\',${_si})">
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}</span>
             <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddMat('${r.brand.replace(/'/g,"\\'")}','${r.product.replace(/'/g,"\\'")}','${cleanP}')" title="新增到骨材記錄">＋</button>
@@ -382,7 +391,7 @@ const APP = {
           const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const enc = encodeURIComponent(JSON.stringify(r));
           // Truncate name to avoid overflow
-          html += `<div class="list-row" onclick="APP.openDetail('opcode',${JSON.stringify(enc)})">
+          html += `<div class="list-row" onclick="APP.openDetailS(\'opcode\',${_si})">
             <span class="col-code">${r.code}</span>
             <span class="col-product" title="${r.name}">${r.name}</span>
             <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddCode('${r.name.replace(/'/g,"\\'")}','${r.code}','${r.price}','${r.area}')" title="新增到代碼紀錄">＋</button>
@@ -418,8 +427,8 @@ const APP = {
         sorted.forEach(r => {
           const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          const enc=encodeURIComponent(JSON.stringify(r));
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('coderec',${JSON.stringify(enc)})">
+          const _si=APP._storeRow(r);
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'coderec\',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-product" title="${r.name}">${r.name}</span>
             <span class="col-code">${r.code}</span>
@@ -441,11 +450,21 @@ const APP = {
     try {
       const recs = await SHEETS.loadEstimate();
       if(!recs.length) { tbody.innerHTML = `<tr><td>${this.empty()}</td></tr>`; return; }
-      // Sort by month ascending for column headers
-      const sorted = [...recs].sort((a,b)=>a.month.localeCompare(b.month));
-      // Build header: 項目 | month1 | month2 ...
+      // Column order: next month first, this month second, rest ascending
+      const now = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const thisYM = `${now.getFullYear()}/${pad(now.getMonth()+1)}`;
+      const nxt = new Date(now.getFullYear(), now.getMonth()+1, 1);
+      const nextYM = `${nxt.getFullYear()}/${pad(nxt.getMonth()+1)}`;
+      const sorted = [...recs].sort((a,b) => {
+        const score = m => m===nextYM ? 0 : m===thisYM ? 1 : 2;
+        const s = score(a.month) - score(b.month);
+        return s !== 0 ? s : a.month.localeCompare(b.month);
+      });
+      // Header: only MM, no year
+      const mLabel = m => { const p=m.split('/'); return p.length>=2 ? p[1].replace(/^0/,'')+' 月' : m; };
       thead.innerHTML = '<tr><th>項目</th>' +
-        sorted.map(r=>`<th>${r.month.substring(2)}</th>`).join('') + '</tr>';
+        sorted.map(r=>`<th>${mLabel(r.month)}</th>`).join('') + '</tr>';
       // Row labels
       const labels = [
         { key:'estimate', label:'預估' },
@@ -485,7 +504,7 @@ const APP = {
         const cleanP = String(r.price||'').replace(/,/g,'').trim();
         html += `<div class="list-row">
           <span class="col-product" style="font-weight:600">${r.name}</span>
-          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄">＋</button>
+          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" style="margin:0 8px">＋</button>
           <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
         </div>`;
       });
@@ -505,10 +524,10 @@ const APP = {
         });
         sortedRows.forEach(r => {
           const isNew=r.todayNew?.toString().toUpperCase()==='TRUE';
-          const enc=encodeURIComponent(JSON.stringify(r));
+          const _si=APP._storeRow(r);
           const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const rowTotal=cleanP*(parseInt(r.qty)||1);
-          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetail('clinic',${JSON.stringify(enc)})">
+          html += `<div class="list-row${isNew?' row-new':''}" onclick="APP.openDetailS(\'clinic\',${_si})">
             ${isNew?'<span class="new-dot"></span>':'<span class="dot-ph"></span>'}
             <span class="col-date">${r.date.substring(5)}</span>
             <span class="col-product">${r.product}</span>
@@ -540,12 +559,24 @@ const APP = {
     catch(e) { this.toast('❌ '+e.message); }
   },
 
+  // ── Detail Modal via store index (avoids HTML encoding issues) ──
+  openDetailS(type, idx) {
+    const r = this._getRow(idx);
+    if(!r) return;
+    this._detailType = type;
+    this._detailData = r;
+    this._renderDetail(type, r);
+  },
+
   // ── Detail Modal — hide _row / internal IDs ──
   openDetail(type, encoded) {
     const r = JSON.parse(decodeURIComponent(encoded));
     this._detailType = type;
     this._detailData = r;
-    const titles = { sx:'手術紀錄', track:'追蹤', mat:'骨材記錄', selfpay:'自費醫材', opcode:'OP代碼', coderec:'代碼紀錄', clinic:'門診記錄' };
+    this._renderDetail(type, r);
+  },
+
+  _renderDetail(type, r) {    const titles = { sx:'手術紀錄', track:'追蹤', mat:'骨材記錄', selfpay:'自費醫材', opcode:'OP代碼', coderec:'代碼紀錄', clinic:'門診記錄' };
     document.getElementById('detail-title').textContent = titles[type] || '詳情';
 
     const field = (label, val) => val ? `<div class="detail-field"><div class="detail-label">${label}</div><div class="detail-val">${val}</div></div>` : '';
@@ -572,8 +603,8 @@ const APP = {
     document.getElementById('detail-body').innerHTML = content;
     document.getElementById('detail-edit-btn').style.display = '';
     document.getElementById('modal-detail').classList.add('open');
+  
   },
-
   openEdit() {
     const type = this._detailType, r = this._detailData;
     this.closeModal('modal-detail');
