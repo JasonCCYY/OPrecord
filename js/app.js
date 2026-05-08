@@ -531,16 +531,27 @@ const APP = {
       const [products, records] = await Promise.all([SHEETS.loadClinicProducts(), SHEETS.loadClinicRecords()]);
       this._clinicProds = products;
       // Build product order map for sorting records
+      // Fixed sort order for clinic records display
+      const CLINIC_ORDER = ['外泌體','PRP','增生','玻尿酸','震波','門診護具'];
       const prodOrder = {};
-      products.forEach((p,i) => { prodOrder[p.name] = i; });
+      // First apply fixed order, then append anything else from products
+      CLINIC_ORDER.forEach((name,i) => { prodOrder[name] = i; });
+      products.forEach((p) => { if(!(p.name in prodOrder)) prodOrder[p.name] = CLINIC_ORDER.length + Object.keys(prodOrder).length; });
 
       let html = '';
       // Self-pay price list
       html += `<div class="clinic-section-hdr">自費項目</div>`;
-      products.forEach(r => {
+      const SELF_ORDER = ['外泌體','PRP','增生','玻尿酸','震波','門診護具'];
+      const sortedProds = [...products].sort((a,b) => {
+        const ai = SELF_ORDER.indexOf(a.name), bi = SELF_ORDER.indexOf(b.name);
+        const an = ai<0 ? 999+products.indexOf(a) : ai;
+        const bn = bi<0 ? 999+products.indexOf(b) : bi;
+        return an - bn;
+      });
+      sortedProds.forEach(r => {
         const cleanP = String(r.price||'').replace(/,/g,'').trim();
-        html += `<div class="list-row" style="gap:8px">
-          <span style="font-weight:600;font-size:1rem;flex:none">${r.name}</span>
+        html += `<div class="list-row">
+          <span style="font-weight:600;font-size:1rem;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
           <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" >＋</button>
           <span style="flex:1"></span>
           <span class="col-price" style="flex:none">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
