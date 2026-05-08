@@ -532,7 +532,7 @@ const APP = {
       this._clinicProds = products;
       // Build product order map for sorting records
       // Fixed sort order for clinic records display
-      const CLINIC_ORDER = ['外泌體','PRP','增生','玻尿酸','震波','門診護具'];
+      const CLINIC_ORDER = ['門診護具','外泌體','PRP','增生','玻尿酸','震波'];
       const prodOrder = {};
       // First apply fixed order, then append anything else from products
       CLINIC_ORDER.forEach((name,i) => { prodOrder[name] = i; });
@@ -541,7 +541,7 @@ const APP = {
       let html = '';
       // Self-pay price list
       html += `<div class="clinic-section-hdr">自費項目</div>`;
-      const SELF_ORDER = ['外泌體','PRP','增生','玻尿酸','震波','門診護具'];
+      const SELF_ORDER = ['門診護具','外泌體','PRP','增生','玻尿酸','震波'];
       const sortedProds = [...products].sort((a,b) => {
         const ai = SELF_ORDER.indexOf(a.name), bi = SELF_ORDER.indexOf(b.name);
         const an = ai<0 ? 999+products.indexOf(a) : ai;
