@@ -14,14 +14,11 @@
 </head>
 <body>
 
-<!-- Loading -->
-<div class="loading-ov" id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:.88rem">Ortho Record</div></div>
+<div class="loading-ov" id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:.95rem">Ortho Record</div></div>
 
-<!-- Auth -->
 <div id="auth-screen">
   <div class="auth-logo">
     <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Bone icon -->
       <circle cx="12" cy="12" r="7" fill="#1a7fd4" opacity=".9"/>
       <circle cx="48" cy="12" r="7" fill="#1a7fd4" opacity=".9"/>
       <circle cx="12" cy="48" r="7" fill="#1a7fd4" opacity=".9"/>
@@ -37,10 +34,8 @@
   </button>
 </div>
 
-<!-- App -->
 <div id="app" style="display:none">
 
-  <!-- Header -->
   <div id="header">
     <div style="width:36px"></div>
     <div class="hdr-actions">
@@ -59,7 +54,6 @@
     </div>
   </div>
 
-  <!-- Search bar -->
   <div id="search-bar">
     <input id="search-input" type="text" placeholder="搜尋..." oninput="APP.onSearch(this.value)">
     <button class="search-clear" onclick="APP.toggleSearch()">✕</button>
@@ -80,12 +74,10 @@
     <button class="sub-tab" data-sub="estimate">預估</button>
   </div>
 
-  <!-- Content -->
   <div id="content">
 
-    <!-- ── Surgery Page ── -->
+    <!-- Surgery Page -->
     <div id="pg-surgery" class="page active">
-      <!-- Sx list sub-page -->
       <div class="sub-page" id="pg-sx-list">
         <div class="sx-wrap">
           <table class="sx-table">
@@ -97,7 +89,6 @@
           </table>
         </div>
       </div>
-      <!-- Track sub-page -->
       <div class="sub-page" id="pg-track" style="display:none">
         <div class="sx-wrap">
           <table class="sx-table">
@@ -111,70 +102,89 @@
       </div>
     </div>
 
-    <!-- ── Material Record ── -->
-    <div id="pg-mat-rec" class="page">
-      <div class="col-hdr-row">
-        <span class="th col-brand">廠牌</span>
-        <span class="th col-product">產品</span>
-        <span class="th col-qty" style="text-align:center">數量</span>
-        <span class="th col-price" style="text-align:right">單價</span>
-        <span style="width:30px;flex-shrink:0"></span>
-      </div>
-      <div class="list-content"><div id="mat-rec-list"></div></div>
-    </div>
+    <!-- Material Page — swipeable slides -->
+    <div id="pg-material" class="page">
+      <div id="mat-swipe-container">
+        <div id="mat-swipe-inner">
 
-    <!-- ── Self-pay ── -->
-    <div id="pg-selfpay" class="page">
-      <div class="col-hdr-row">
-        <span class="th col-brand">廠牌</span>
-        <span class="th col-product">產品</span>
-        <span style="width:36px;flex-shrink:0"></span>
-        <span class="th col-price" style="text-align:right">單價</span>
-        <span class="th col-hosp" style="text-align:right">醫院</span>
-      </div>
-      <div class="list-content"><div id="selfpay-list"></div></div>
-    </div>
+          <!-- Slide 0: 醫材記錄 -->
+          <div class="mat-slide" id="pg-mat-rec">
+            <div class="list-content">
+              <div class="col-hdr-row">
+                <span class="dot-ph"></span>
+                <span class="th col-brand">廠牌</span>
+                <span class="th col-product">產品</span>
+                <span class="th col-qty" style="text-align:center">數量</span>
+                <span class="th col-price" style="text-align:right">單價</span>
+                <span style="width:32px;flex-shrink:0"></span>
+              </div>
+              <div id="mat-rec-list"></div>
+            </div>
+          </div>
 
-    <!-- ── OP Code ── -->
-    <div id="pg-opcode" class="page">
-      <div class="col-hdr-row">
-        <span class="th col-code">代碼</span>
-        <span class="th col-product">術式</span>
-        <span style="width:36px;flex-shrink:0"></span>
-        <span class="th col-price" style="text-align:right">單價</span>
-      </div>
-      <div class="list-content"><div id="opcode-list"></div></div>
-    </div>
+          <!-- Slide 1: 自費醫材 -->
+          <div class="mat-slide" id="pg-selfpay">
+            <div class="list-content">
+              <div class="col-hdr-row">
+                <span class="th col-brand">廠牌</span>
+                <span class="th col-product">產品</span>
+                <span style="width:32px;flex-shrink:0"></span>
+                <span class="th col-price" style="text-align:right">單價</span>
+                <span class="th col-hosp" style="text-align:right">醫院</span>
+              </div>
+              <div id="selfpay-list"></div>
+            </div>
+          </div>
 
-    <!-- ── Code Record ── -->
-    <div id="pg-code-rec" class="page">
-      <div class="col-hdr-row">
-        <span class="dot-ph"></span>
-        <span class="th col-product">術式</span>
-        <span class="th col-code">代碼</span>
-        <span class="th col-price" style="text-align:right">單價</span>
-        <span class="th col-qty" style="text-align:center">量</span>
-        <span class="th col-area" style="text-align:right">院區</span>
-      </div>
-      <div class="list-content"><div id="code-rec-list"></div></div>
-    </div>
+          <!-- Slide 2: 代碼 -->
+          <div class="mat-slide" id="pg-opcode">
+            <div class="list-content">
+              <div class="col-hdr-row">
+                <span class="th col-code">代碼</span>
+                <span class="th col-product">術式</span>
+                <span style="width:32px;flex-shrink:0"></span>
+                <span class="th col-price" style="text-align:right">單價</span>
+              </div>
+              <div id="opcode-list"></div>
+            </div>
+          </div>
 
-    <!-- ── Estimate ── -->
-    <div id="pg-estimate" class="page">
-      <div class="est-hdr" style="position:sticky;top:0;z-index:10">
-        <span class="th">月份</span><span class="th" style="text-align:right">預估</span><span class="th" style="text-align:right">醫材</span><span class="th" style="text-align:right">中正</span><span class="th" style="text-align:right">門診</span><span class="th" style="text-align:right">右昌</span>
-      </div>
-      <div class="list-content"><div id="estimate-list"></div></div>
-    </div>
+          <!-- Slide 3: 代碼紀錄 -->
+          <div class="mat-slide" id="pg-code-rec">
+            <div class="list-content">
+              <div class="col-hdr-row">
+                <span class="dot-ph"></span>
+                <span class="th col-product">術式</span>
+                <span class="th col-code">代碼</span>
+                <span class="th col-price" style="text-align:right">單價</span>
+                <span class="th col-qty" style="text-align:center">量</span>
+                <span class="th col-area" style="text-align:right">院區</span>
+              </div>
+              <div id="code-rec-list"></div>
+            </div>
+          </div>
 
-    <!-- ── Clinic (unified scroll) ── -->
+          <!-- Slide 4: 預估 -->
+          <div class="mat-slide" id="pg-estimate">
+            <div class="est-table-wrap">
+              <table class="est-table">
+                <thead id="est-thead"><tr><th>項目</th></tr></thead>
+                <tbody id="est-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /mat-swipe-inner -->
+      </div><!-- /mat-swipe-container -->
+    </div><!-- /pg-material -->
+
+    <!-- Clinic Page -->
     <div id="pg-clinic" class="page">
       <div class="list-content" id="clinic-content"></div>
     </div>
 
   </div><!-- /content -->
 
-  <!-- Bottom Tabs -->
   <div id="bottom-tabs">
     <button class="tab-btn" data-tab="material">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h18"/></svg>醫材
@@ -187,15 +197,14 @@
     </button>
   </div>
 
-</div><!-- /app -->
+</div>
 
-<!-- FAB -->
 <button class="fab" id="fab" style="display:flex">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 <div class="toast" id="toast"></div>
 
-<!-- ════════ DETAIL MODAL ════════ -->
+<!-- DETAIL MODAL -->
 <div class="modal-bd" id="modal-detail" onclick="if(event.target===this)APP.closeModal('modal-detail')">
 <div class="modal-sheet">
   <div class="modal-handle"></div>
@@ -209,9 +218,7 @@
 </div>
 </div>
 
-<!-- ════════ EDIT MODALS ════════ -->
-
-<!-- Edit Surgery -->
+<!-- EDIT MODALS -->
 <div class="modal-bd" id="modal-edit-sx" onclick="if(event.target===this)APP.closeModal('modal-edit-sx')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改手術紀錄</div>
@@ -230,7 +237,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-sx')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit Track -->
 <div class="modal-bd" id="modal-edit-track" onclick="if(event.target===this)APP.closeModal('modal-edit-track')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改追蹤紀錄</div>
@@ -253,7 +259,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-track')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit Mat -->
 <div class="modal-bd" id="modal-edit-mat" onclick="if(event.target===this)APP.closeModal('modal-edit-mat')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改骨材記錄</div>
@@ -275,7 +280,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-mat')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit SelfPay -->
 <div class="modal-bd" id="modal-edit-selfpay" onclick="if(event.target===this)APP.closeModal('modal-edit-selfpay')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改自費醫材</div>
@@ -288,7 +292,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-selfpay')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit OpCode -->
 <div class="modal-bd" id="modal-edit-opcode" onclick="if(event.target===this)APP.closeModal('modal-edit-opcode')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改 OP 代碼</div>
@@ -301,7 +304,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-opcode')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit CodeRec -->
 <div class="modal-bd" id="modal-edit-coderec" onclick="if(event.target===this)APP.closeModal('modal-edit-coderec')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改代碼紀錄</div>
@@ -316,7 +318,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-coderec')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- Edit Clinic -->
 <div class="modal-bd" id="modal-edit-clinic" onclick="if(event.target===this)APP.closeModal('modal-edit-clinic')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改門診記錄</div>
@@ -329,9 +330,7 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-clinic')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
-<!-- ════════ NEW RECORD MODALS ════════ -->
-
-<!-- New Surgery -->
+<!-- NEW RECORD MODALS -->
 <div class="modal-bd" id="modal-op" onclick="if(event.target===this)APP.closeModal('modal-op')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增手術紀錄</div>
@@ -357,13 +356,12 @@
   <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="s-location" placeholder="如 Rt、Lt、L4-5"></div>
   <div class="fg">
     <label class="fg-label">骨材</label><input type="hidden" id="s-bone-val">
-    <div class="bone-grid" id="s-bone-wrap"><div style="color:var(--muted);font-size:.82rem">請先選擇類型</div></div>
+    <div class="bone-grid" id="s-bone-wrap"><div style="color:var(--muted);font-size:.88rem">請先選擇類型</div></div>
   </div>
   <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="s-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-op')">取消</button><button class="btn-save" onclick="APP.saveOp()">儲存</button></div>
 </div></div>
 
-<!-- New Track -->
 <div class="modal-bd" id="modal-track" onclick="if(event.target===this)APP.closeModal('modal-track')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增追蹤紀錄</div>
@@ -386,7 +384,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-track')">取消</button><button class="btn-save" onclick="APP.saveTrack()">儲存</button></div>
 </div></div>
 
-<!-- New Mat -->
 <div class="modal-bd" id="modal-mat" onclick="if(event.target===this)APP.closeModal('modal-mat')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增醫材紀錄</div>
@@ -400,7 +397,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-mat')">取消</button><button class="btn-save" onclick="APP.saveMat()">儲存</button></div>
 </div></div>
 
-<!-- New Code Record -->
 <div class="modal-bd" id="modal-code" onclick="if(event.target===this)APP.closeModal('modal-code')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增代碼紀錄</div>
@@ -415,7 +411,6 @@
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-code')">取消</button><button class="btn-save" onclick="APP.saveCode()">儲存</button></div>
 </div></div>
 
-<!-- New Clinic -->
 <div class="modal-bd" id="modal-cli" onclick="if(event.target===this)APP.closeModal('modal-cli')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增門診記錄</div>
