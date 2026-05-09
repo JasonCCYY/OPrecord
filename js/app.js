@@ -665,6 +665,7 @@ const APP = {
   openEdit() {
     const type = this._detailType, r = this._detailData;
     this.closeModal('modal-detail');
+    try {
     const editModalMap = { sx:'modal-edit-sx', track:'modal-edit-track', mat:'modal-edit-mat', selfpay:'modal-edit-selfpay', opcode:'modal-edit-opcode', coderec:'modal-edit-coderec', clinic:'modal-edit-clinic' };
     const m = editModalMap[type];
     if(!m) return;
@@ -737,7 +738,8 @@ const APP = {
       document.getElementById('ecl-price').value   = String(r.price||'').replace(/,/g,'');
       document.getElementById('ecl-qty').value     = r.qty||'1';
     }
-    this.openModal(m);
+    this.openModal(m, true);
+    } catch(e) { console.error('openEdit error:', e); this.toast('⚠️ 開啟修改失敗: '+e.message); }
   },
 
   async saveEdit() {
@@ -942,9 +944,14 @@ const APP = {
   },
   updateBoneVal(){document.getElementById('s-bone-val').value=[...document.querySelectorAll('#s-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , ');},
 
-  openModal(id){
-    document.getElementById(id).classList.add('open');
-    document.querySelectorAll(`#${id} input[type="date"]`).forEach(el=>el.value=this.todayISO());
+  openModal(id, skipDateReset){
+    const el = document.getElementById(id);
+    if(!el) { console.error('Modal not found:', id); return; }
+    el.classList.add('open');
+    // Only reset dates for NEW record modals, not edit modals
+    if(!skipDateReset && !id.startsWith('modal-edit-')) {
+      document.querySelectorAll(`#${id} input[type="date"]`).forEach(el=>el.value=this.todayISO());
+    }
   },
   closeModal(id){document.getElementById(id).classList.remove('open');},
 
