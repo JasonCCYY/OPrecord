@@ -284,15 +284,17 @@ const APP = {
           lastM=m;
           const ms=sorted.filter(x=>this.getMonth(x.date)===m);
           const zh=ms.filter(x=>x.area==='中正').length, yc=ms.filter(x=>x.area==='右昌').length;
-          rows += `<tr class="sx-month-row"><td colspan="8">${m} <span class="month-badge">${ms.length}（${zh}/${yc}）</span></td></tr>`;
+          rows += `<tr class="sx-month-row"><td colspan="7">${m} <span class="month-badge">${ms.length}（${zh}/${yc}）</span></td></tr>`;
         }
         const p=r.date.split('/');
         const day=p.length>=3?p[1].padStart(2,'0')+'/'+p[2].padStart(2,'0'):r.date.substring(5);
         const _si=APP._storeRow(r);
+        const isYC = r.area==='右昌';
+        const missingData = !r.name || !r.mrn;
+        const prefix = missingData ? '<span style="color:var(--red);font-weight:700">*</span>' : (isYC ? '<span style="color:var(--muted)">．</span>' : '');
         rows += `<tr class="sx-data-row" onclick="APP.openDetailS('sx',${_si})">
           <td class="sx-date">${day}</td>
-          <td class="sx-area">${r.area}</td>
-          <td class="sx-name">${r.name}</td>
+          <td class="sx-name">${prefix}${r.name}</td>
           <td><span class="badge badge-${r.type}">${r.type||'-'}</span></td>
           <td class="sx-opname">${r.opName}</td>
           <td class="sx-loc" title="${r.location}">${r.location}</td>
@@ -312,25 +314,32 @@ const APP = {
       let recs = await SHEETS.loadTrackRecords();
       recs = this.filterBySearch(recs, ['name','type','opName','location','area','mrn']);
       if(!recs.length) { el.innerHTML = `<tr><td colspan="8">${this.empty()}</td></tr>`; return; }
-      let rows = '', lastM = '';
-      const sorted = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
-      sorted.forEach(r => {
-        const m = this.getMonth(r.date);
-        if(m!==lastM) {
-          lastM=m;
-          rows += `<tr class="sx-month-row"><td colspan="8">${m}</td></tr>`;
-        }
-        const _si=APP._storeRow(r);
-        rows += `<tr class="sx-data-row" onclick="APP.openDetailS('track',${_si})">
-          <td class="sx-date">${r.date.substring(5)}</td>
-          <td class="sx-area">${r.area}</td>
-          <td class="sx-name">${r.name}</td>
-          <td><span class="badge badge-${r.type}">${r.type||'-'}</span></td>
-          <td class="sx-opname">${r.opName}</td>
-          <td class="sx-loc" title="${r.location}">${r.location}</td>
-          <td class="sx-implant">${r.implant}</td>
-          <td class="sx-note">${r.note}</td>
-        </tr>`;
+      // Group by 院區, sort newest first within each group
+      const areaOrder = ['中正','右昌','診所'];
+      const groups = {};
+      recs.forEach(r => { const a=r.area||'其他'; (groups[a]=groups[a]||[]).push(r); });
+      Object.keys(groups).forEach(a => groups[a].sort((x,y)=>y.date.localeCompare(x.date)));
+      const sortedAreas = Object.keys(groups).sort((a,b) => {
+        const ai=areaOrder.indexOf(a), bi=areaOrder.indexOf(b);
+        return (ai<0?99:ai)-(bi<0?99:bi);
+      });
+      let rows = '';
+      sortedAreas.forEach(area => {
+        rows += `<tr class="sx-month-row"><td colspan="8">${area} <span class="month-badge">${groups[area].length}</span></td></tr>`;
+        groups[area].forEach(r => {
+          // Full date format: 2026/01/24
+          const dateFull = r.date;
+          const _si=APP._storeRow(r);
+          rows += `<tr class="sx-data-row" onclick="APP.openDetailS('track',${_si})">
+            <td class="sx-date" style="font-size:.82rem">${dateFull}</td>
+            <td class="sx-name">${r.name}</td>
+            <td><span class="badge badge-${r.type}">${r.type||'-'}</span></td>
+            <td class="sx-opname">${r.opName}</td>
+            <td class="sx-loc" title="${r.location}">${r.location}</td>
+            <td class="sx-implant">${r.implant}</td>
+            <td class="sx-note">${r.note}</td>
+          </tr>`;
+        });
       });
       el.innerHTML = rows;
     } catch(e) { el.innerHTML = `<tr><td colspan="8">${this.err(e)}</td></tr>`; }
@@ -813,12 +822,23 @@ const APP = {
     const wrap=document.getElementById('s-bone-wrap');
     const main=(SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
     const growth=(SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
-    let h=main.map(b=>`<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
-    h+=`<div class="bone-section">生長因子</div>`;
-    h+=growth.map(b=>`<label class="bone-chip"><input type="checkbox" value="${b}" onchange="APP.updateBoneVal()"><span>${b}</span></label>`).join('');
+    // Render as toggle chips instead of checkboxes
+    let h='';
+    if(main.length) {
+      h+=`<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;
+      h+=main.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleBoneChip(this)">${b}</button>`).join('');
+      h+=`</div>`;
+    }
+    h+=`<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
+    h+=growth.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleBoneChip(this)">${b}</button>`).join('');
+    h+=`</div>`;
     wrap.innerHTML=h; this.updateBoneVal();
   },
-  updateBoneVal(){document.getElementById('s-bone-val').value=[...document.querySelectorAll('#s-bone-wrap input:checked')].map(c=>c.value).join(' , ');},
+  toggleBoneChip(btn){
+    btn.classList.toggle('on');
+    this.updateBoneVal();
+  },
+  updateBoneVal(){document.getElementById('s-bone-val').value=[...document.querySelectorAll('#s-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , ');},
 
   openModal(id){
     document.getElementById(id).classList.add('open');
