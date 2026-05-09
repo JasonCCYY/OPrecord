@@ -189,8 +189,10 @@ const APP = {
           if(startIdx > 0) {
             // Still within mat slides
             this.switchMat(this.MAT_SUBS[startIdx - 1]);
+          } else {
+            // At matRec (first slide, idx=0) → go to clinic
+            this.switchTab('clinic');
           }
-          // At matRec (first slide) — nowhere to go left from material
         }
       } else {
         this._applySlide(startIdx);
@@ -199,25 +201,29 @@ const APP = {
     }, {passive: true});
   },
 
-  // ── Global cross-tab swipe (surgery ↔ clinic) ──
+  // ── Cross-tab swipe ──
+  // surgery: edge-only (has horizontal scroll table)
+  // clinic:  full-page swipe (no horizontal scroll)
   bindTabSwipe() {
-    // Attach to the surgery and clinic pages
     const TAB_ORDER = ['material', 'surgery', 'clinic'];
-    ['pg-surgery', 'pg-clinic'].forEach(pgId => {
+    const self = this;
+
+    const makeSwipeHandler = (pgId, edgeOnly) => {
       const pg = document.getElementById(pgId);
       if(!pg) return;
-      let startX, startY, dragging = false;
+      let startX = null, startY = 0, dragging = false;
 
       pg.addEventListener('touchstart', e => {
         if(e.touches.length !== 1) return;
-        startX = e.touches[0].clientX;
+        const x = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         dragging = false;
-        // Only activate edge swipe within 30px of screen edge
-        const EDGE = 30;
-        const sw = window.innerWidth;
-        const isEdge = startX <= EDGE || startX >= sw - EDGE;
-        if(!isEdge) { startX = null; return; } // ignore non-edge touches
+        if(edgeOnly) {
+          const EDGE = 30;
+          const sw = window.innerWidth;
+          if(x > EDGE && x < sw - EDGE) { startX = null; return; }
+        }
+        startX = x;
       }, {passive: true});
 
       pg.addEventListener('touchmove', e => {
@@ -227,11 +233,10 @@ const APP = {
         if(!dragging && Math.abs(dy) > Math.abs(dx) + 8) return;
         if(!dragging && Math.abs(dx) > 8) dragging = true;
         if(!dragging) return;
-        // Live drag preview on tab-swipe-inner
         const inner = document.getElementById('tab-swipe-inner');
         if(inner) {
-          const curIdx = this._TAB_IDX[this.tab] ?? 1;
-          const pct = (dx / pg.offsetWidth) * 33.333;
+          const curIdx = self._TAB_IDX[self.tab] ?? 1;
+          const pct = (dx / pg.offsetWidth) * 100 / 3;
           inner.style.transition = 'none';
           inner.style.transform = `translateX(${-curIdx * 100/3 + pct}%)`;
         }
@@ -242,36 +247,45 @@ const APP = {
         const dx = e.changedTouches[0].clientX - startX;
         const inner = document.getElementById('tab-swipe-inner');
         if(inner) inner.style.transition = '';
+        const curIdx = self._TAB_IDX[self.tab] ?? 1;
         if(Math.abs(dx) < 60) {
-          // Snap back
-          const curIdx = this._TAB_IDX[this.tab] ?? 1;
           if(inner) inner.style.transform = `translateX(${-curIdx * 100/3}%)`;
           dragging = false; return;
         }
-        const curTab = this.tab;
-        const curIdx = TAB_ORDER.indexOf(curTab);
-        if(curIdx < 0) { dragging = false; return; }
+        const curTab = self.tab;
+        const TABS = ['material', 'surgery', 'clinic'];
+        const ci = TABS.indexOf(curTab);
         if(dx < 0) {
-          const nextTab = TAB_ORDER[curIdx + 1];
-          if(nextTab) this.switchTab(nextTab);
-          else {
-            const ci = this._TAB_IDX[this.tab] ?? 1;
-            if(inner) inner.style.transform = `translateX(${-ci * 100/3}%)`;
+          // Left swipe → next tab (circular)
+          const nextTab = TABS[(ci + 1) % TABS.length];
+          if(curTab === 'material') {
+            self.switchTab('surgery');
+          } else if(curTab === 'surgery') {
+            self.switchTab('clinic');
+          } else {
+            // clinic → material (wrap)
+            self.switchTab('material');
+            setTimeout(() => self.switchMat('matRec'), 50);
           }
         } else {
-          if(curTab === 'surgery') {
-            this.switchTab('material');
-            setTimeout(() => this.switchMat('estimate'), 50);
-          } else if(curTab === 'clinic') {
-            this.switchTab('surgery');
+          // Right swipe → prev tab (circular)
+          if(curTab === 'material') {
+            // material → clinic (wrap)
+            self.switchTab('clinic');
+          } else if(curTab === 'surgery') {
+            self.switchTab('material');
+            setTimeout(() => self.switchMat('estimate'), 50);
           } else {
-            const ci = this._TAB_IDX[this.tab] ?? 1;
-            if(inner) inner.style.transform = `translateX(${-ci * 100/3}%)`;
+            // clinic → surgery
+            self.switchTab('surgery');
           }
         }
         dragging = false;
       }, {passive: true});
-    });
+    };
+
+    makeSwipeHandler('pg-surgery', true);  // edge-only: has horizontal scroll
+    makeSwipeHandler('pg-clinic',  false); // full swipe: no horizontal scroll
   },
 
 
