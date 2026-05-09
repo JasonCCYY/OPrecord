@@ -25,7 +25,7 @@
   </button>
 </div>
 
-<div id="app" style="display:none">
+<div id="desktop-layout"><div id="app" style="display:none">
 
   <div id="header">
     <div style="width:36px"></div>
@@ -194,7 +194,23 @@
     </button>
   </div>
 
+</div><!-- /app -->
+
+<!-- Desktop info panel (hidden on mobile/tablet via CSS) -->
+<div id="desktop-panel">
+  <h2>🦴 Ortho Record</h2>
+  <div class="dp-hint">
+    <strong>骨科手術紀錄管理系統</strong><br><br>
+    📱 在手機上以 PWA 安裝使用效果最佳<br>
+    🖥️ 桌面模式下，左側為主操作介面<br><br>
+    <strong>快速操作：</strong><br>
+    • 左右滑動切換醫材 / 手術紀錄 / 門診<br>
+    • 點擊任何項目查看詳細資料<br>
+    • 點擊 ＋ 新增紀錄
+  </div>
 </div>
+
+</div><!-- /desktop-layout -->
 
 <button class="fab" id="fab" style="display:flex">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
