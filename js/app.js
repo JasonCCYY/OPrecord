@@ -277,11 +277,13 @@ const APP = {
 
   // ── Swipe down to close any open modal ──
   bindModalSwipe() {
+    // Only detail modal gets swipe-to-close
     document.querySelectorAll('.modal-sheet').forEach(sheet => {
       let startY = 0, dragging = false;
       const modal = sheet.closest('.modal-bd');
       if(!modal) return;
       const modalId = modal.id;
+      if(modalId !== 'modal-detail') return; // only detail card
 
       sheet.addEventListener('touchstart', e => {
         startY = e.touches[0].clientY;
