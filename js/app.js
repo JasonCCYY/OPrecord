@@ -685,7 +685,6 @@ const APP = {
       document.getElementById(pfx+'-clinicid') && (document.getElementById(pfx+'-clinicid').value=r.clinicId||'');
       document.getElementById(pfx+'-name').value   = r.name||'';
       document.getElementById(pfx+'-loc').value    = r.location||'';
-      document.getElementById(pfx+'-implant').value= r.implant||'';
       document.getElementById(pfx+'-note').value   = r.note||'';
       // Type chips
       const typeVal=r.type||'';
