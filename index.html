@@ -268,7 +268,10 @@
   </div>
   <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="et-opname" placeholder="輸入手術名稱"></div>
   <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="et-loc" placeholder="如 Rt、Lt、L4-5"></div>
-  <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="et-implant" placeholder="選填"></div>
+  <div class="fg">
+    <label class="fg-label">骨材</label><input type="hidden" id="et-bone-val">
+    <div class="bone-grid" id="et-bone-wrap"><div style="color:var(--muted);font-size:.88rem">請先選擇類型</div></div>
+  </div>
   <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="et-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-track')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>

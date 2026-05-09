@@ -699,16 +699,11 @@ const APP = {
         const sel=document.getElementById('es-opname');
         sel.innerHTML='<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}"${n===r.opName?' selected':''}>${n}</option>`).join('');
         if(!names.includes(r.opName)&&r.opName){sel.innerHTML+=`<option value="${r.opName}" selected>${r.opName}</option>`;}
-        // bone chips
-        APP.editSelectType({closest:()=>document.getElementById('es-type-chips'),classList:{add:()=>{},remove:()=>{}}},typeVal,'es');
-        setTimeout(()=>{
-          document.querySelectorAll('#es-bone-wrap .bone-toggle').forEach(b=>{
-            if(r.implant&&r.implant.split(' , ').includes(b.dataset.val)){b.classList.add('on');}
-          });
-          document.getElementById('es-bone-val').value=r.implant||'';
-        },50);
+        // bone chips — init directly
+        APP.initEsBoneChips(typeVal, r.implant||'');
       } else {
         document.getElementById('et-opname').value=r.opName||'';
+        APP.initEtBoneChips(typeVal, r.implant||'');
       }
     } else if(type==='mat') {
       document.getElementById('em-brand').value   = r.brand||'';
@@ -755,7 +750,7 @@ const APP = {
         this.closeModal('modal-edit-sx'); this.loadSurgery();
       } else if(type==='track') {
         const etDate=document.getElementById('et-date').value.replace(/-/g,'/');
-        await SHEETS.updateTrack(r._row,{date:etDate,area:document.getElementById('et-area-val').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid')?.value||'',name:document.getElementById('et-name').value,type:document.getElementById('et-type-val').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-implant').value,note:document.getElementById('et-note').value});
+        await SHEETS.updateTrack(r._row,{date:etDate,area:document.getElementById('et-area-val').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid')?.value||'',name:document.getElementById('et-name').value,type:document.getElementById('et-type-val').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-bone-val')?.value||document.getElementById('et-implant')?.value||'',note:document.getElementById('et-note').value});
         this.closeModal('modal-edit-track'); this.loadTrack();
       } else if(type==='mat') {
         await SHEETS.updateMatRow(r._row,{brand:document.getElementById('em-brand').value,product:document.getElementById('em-product').value,date:document.getElementById('em-date').value,price:document.getElementById('em-price').value,qty:document.getElementById('em-qty').value,done:document.getElementById('em-done-val').value});
@@ -851,18 +846,48 @@ const APP = {
       const sel = document.getElementById('es-opname');
       const names = (SHEETS.opCats||[]).filter(c=>c.type.trim()===type).map(c=>c.name);
       sel.innerHTML = '<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
-      const bwrap = document.getElementById('es-bone-wrap');
-      const main = (SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
-      const growth = (SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
-      let h='';
-      if(main.length){h+=`<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;h+=main.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');h+=`</div>`;}
-      h+=`<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
-      h+=growth.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');h+=`</div>`;
-      bwrap.innerHTML=h;
-      document.getElementById('es-bone-val').value='';
+      APP.initEsBoneChips(type, '');
+    } else if(pfx==='et') {
+      APP.initEtBoneChips(type, '');
     }
   },
   toggleEsBoneChip(btn){ btn.classList.toggle('on'); document.getElementById('es-bone-val').value=[...document.querySelectorAll('#es-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , '); },
+  initEsBoneChips(type, implant) {
+    const bwrap = document.getElementById('es-bone-wrap');
+    const main = (SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
+    const growth = (SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
+    const selected = implant ? implant.split(' , ').map(s=>s.trim()) : [];
+    let h = '';
+    if(main.length) {
+      h += `<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;
+      h += main.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');
+      h += `</div>`;
+    }
+    h += `<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
+    h += growth.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');
+    h += `</div>`;
+    bwrap.innerHTML = h;
+    document.getElementById('es-bone-val').value = implant;
+  },
+  toggleEtBoneChip(btn){ btn.classList.toggle('on'); document.getElementById('et-bone-val').value=[...document.querySelectorAll('#et-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , '); },
+  initEtBoneChips(type, implant) {
+    const bwrap = document.getElementById('et-bone-wrap');
+    const main = (SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
+    const growth = (SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
+    const selected = implant ? implant.split(' , ').map(s=>s.trim()) : [];
+    let h = '';
+    if(main.length) {
+      h += `<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;
+      h += main.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleEtBoneChip(this)">${b}</button>`).join('');
+      h += `</div>`;
+    }
+    h += `<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
+    h += growth.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleEtBoneChip(this)">${b}</button>`).join('');
+    h += `</div>`;
+    bwrap.innerHTML = h;
+    document.getElementById('et-bone-val').value = implant;
+  },
+
 
   // New track area/type chips
   tkSelectArea(el, v) {
