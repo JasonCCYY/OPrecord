@@ -19,6 +19,7 @@ const APP = {
     this.bindTabs();
     this.bindSubTabs();
     this.bindMatSwipe();
+    this.bindTabSwipe();
     this.bindModalSwipe();
     document.getElementById('fab').addEventListener('click', () => this.fabClick());
     document.getElementById('loading').style.display = 'none';
@@ -163,15 +164,80 @@ const APP = {
       const inner = document.getElementById('mat-swipe-inner');
       inner.style.transition = '';
       if(Math.abs(dx) > 50) {
-        const newIdx = dx < 0
-          ? Math.min(startIdx + 1, this.MAT_SUBS.length - 1)
-          : Math.max(startIdx - 1, 0);
-        this.switchMat(this.MAT_SUBS[newIdx]);
+        const lastMatIdx = this.MAT_SUBS.length - 1;
+        if(dx < 0) {
+          // Left swipe (→ next)
+          if(startIdx < lastMatIdx) {
+            // Still within mat slides
+            this.switchMat(this.MAT_SUBS[startIdx + 1]);
+          } else {
+            // At estimate (last mat slide) → go to surgery
+            this.switchTab('surgery');
+          }
+        } else {
+          // Right swipe (→ prev)
+          if(startIdx > 0) {
+            // Still within mat slides
+            this.switchMat(this.MAT_SUBS[startIdx - 1]);
+          }
+          // At matRec (first slide) — nowhere to go left from material
+        }
       } else {
         this._applySlide(startIdx);
       }
       dragging = false;
     }, {passive: true});
+  },
+
+  // ── Global cross-tab swipe (surgery ↔ clinic) ──
+  bindTabSwipe() {
+    // Attach to the surgery and clinic pages
+    const TAB_ORDER = ['material', 'surgery', 'clinic'];
+    ['pg-surgery', 'pg-clinic'].forEach(pgId => {
+      const pg = document.getElementById(pgId);
+      if(!pg) return;
+      let startX, startY, dragging = false;
+
+      pg.addEventListener('touchstart', e => {
+        if(e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        dragging = false;
+      }, {passive: true});
+
+      pg.addEventListener('touchmove', e => {
+        if(e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if(!dragging && Math.abs(dy) > Math.abs(dx) + 8) return;
+        if(!dragging && Math.abs(dx) > 8) dragging = true;
+      }, {passive: true});
+
+      pg.addEventListener('touchend', e => {
+        if(!dragging) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        if(Math.abs(dx) < 60) { dragging = false; return; }
+        const curTab = this.tab;
+        const curIdx = TAB_ORDER.indexOf(curTab);
+        if(curIdx < 0) { dragging = false; return; }
+        if(dx < 0) {
+          // Left swipe → next tab
+          const nextTab = TAB_ORDER[curIdx + 1];
+          if(nextTab) this.switchTab(nextTab);
+        } else {
+          // Right swipe → prev tab
+          // surgery right → go to material/estimate (last mat slide)
+          if(curTab === 'surgery') {
+            this.switchTab('material');
+            // Go to estimate (last slide)
+            setTimeout(() => this.switchMat('estimate'), 50);
+          } else if(curTab === 'clinic') {
+            this.switchTab('surgery');
+          }
+        }
+        dragging = false;
+      }, {passive: true});
+    });
   },
 
 
