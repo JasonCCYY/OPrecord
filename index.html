@@ -213,40 +213,63 @@
 <div class="modal-bd" id="modal-edit-sx" onclick="if(event.target===this)APP.closeModal('modal-edit-sx')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改手術紀錄</div>
-  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="text" id="es-date"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">院區</label><input class="f-input" type="text" id="es-area"></div>
-    <div class="fg"><label class="fg-label">類型</label><input class="f-input" type="text" id="es-type"></div>
+  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="es-date"></div>
+  <div class="fg">
+    <label class="fg-label">院區</label><input type="hidden" id="es-area-val" value="中正">
+    <div class="chip-row"><button class="chip area on" id="es-area-zz" onclick="APP.editSelectArea(this,'中正','es')">中正</button><button class="chip area" id="es-area-yc" onclick="APP.editSelectArea(this,'右昌','es')">右昌</button></div>
   </div>
-  <div class="fg"><label class="fg-label">姓名</label><input class="f-input" type="text" id="es-name"></div>
-  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="es-opname"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="es-loc"></div>
-    <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="es-implant"></div>
+  <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="es-mrn" placeholder="選填"></div>
+  <div class="fg" id="es-clinicid-wrap" style="display:none"><label class="fg-label">診所 ID</label><input class="f-input" type="text" id="es-clinicid" placeholder="右昌診所ID"></div>
+  <div class="fg"><label class="fg-label">病患姓名</label><input class="f-input" type="text" id="es-name" placeholder="輸入姓名"></div>
+  <div class="fg">
+    <label class="fg-label">類型</label><input type="hidden" id="es-type-val" value="Joint">
+    <div class="chip-row wrap" id="es-type-chips">
+      <button class="chip" onclick="APP.editSelectType(this,'Joint','es')">Joint</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Sports','es')">Sports</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Trauma','es')">Trauma</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Spine','es')">Spine</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Tumor','es')">Tumor</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Hand','es')">Hand</button>
+      <button class="chip" onclick="APP.editSelectType(this,'ROI','es')">ROI</button>
+    </div>
   </div>
-  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="es-note"></div>
+  <div class="fg"><label class="fg-label">手術名稱</label><select class="f-sel" id="es-opname"><option value="">請先選擇類型</option></select></div>
+  <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="es-loc" placeholder="如 Rt、Lt、L4-5"></div>
+  <div class="fg">
+    <label class="fg-label">骨材</label><input type="hidden" id="es-bone-val">
+    <div class="bone-grid" id="es-bone-wrap"><div style="color:var(--muted);font-size:.88rem">請先選擇類型</div></div>
+  </div>
+  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="es-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-sx')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
 <div class="modal-bd" id="modal-edit-track" onclick="if(event.target===this)APP.closeModal('modal-edit-track')">
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">修改追蹤紀錄</div>
-  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="text" id="et-date"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">院區</label><input class="f-input" type="text" id="et-area"></div>
-    <div class="fg"><label class="fg-label">類型</label><input class="f-input" type="text" id="et-type"></div>
+  <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="et-date"></div>
+  <div class="fg">
+    <label class="fg-label">院區</label><input type="hidden" id="et-area-val" value="中正">
+    <div class="chip-row"><button class="chip area on" id="et-area-zz" onclick="APP.editSelectArea(this,'中正','et')">中正</button><button class="chip area" id="et-area-yc" onclick="APP.editSelectArea(this,'右昌','et')">右昌</button><button class="chip area" id="et-area-cl" onclick="APP.editSelectArea(this,'診所','et')">診所</button></div>
   </div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="et-mrn"></div>
-    <div class="fg"><label class="fg-label">診所ID</label><input class="f-input" type="text" id="et-clinicid"></div>
+  <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="et-mrn" placeholder="選填"></div>
+  <div class="fg" id="et-clinicid-wrap" style="display:none"><label class="fg-label">診所 ID</label><input class="f-input" type="text" id="et-clinicid" placeholder="診所ID"></div>
+  <div class="fg"><label class="fg-label">病患姓名</label><input class="f-input" type="text" id="et-name" placeholder="輸入姓名"></div>
+  <div class="fg">
+    <label class="fg-label">類型</label><input type="hidden" id="et-type-val" value="">
+    <div class="chip-row wrap" id="et-type-chips">
+      <button class="chip" onclick="APP.editSelectType(this,'Joint','et')">Joint</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Sports','et')">Sports</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Trauma','et')">Trauma</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Spine','et')">Spine</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Tumor','et')">Tumor</button>
+      <button class="chip" onclick="APP.editSelectType(this,'Hand','et')">Hand</button>
+      <button class="chip" onclick="APP.editSelectType(this,'ROI','et')">ROI</button>
+    </div>
   </div>
-  <div class="fg"><label class="fg-label">姓名</label><input class="f-input" type="text" id="et-name"></div>
-  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="et-opname"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="et-loc"></div>
-    <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="et-implant"></div>
-  </div>
-  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="et-note"></div>
+  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="et-opname" placeholder="輸入手術名稱"></div>
+  <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="et-loc" placeholder="如 Rt、Lt、L4-5"></div>
+  <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="et-implant" placeholder="選填"></div>
+  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="et-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-edit-track')">取消</button><button class="btn-save" onclick="APP.saveEdit()">儲存</button></div>
 </div></div>
 
@@ -359,21 +382,29 @@
 <div class="modal-sheet">
   <div class="modal-handle"></div><div class="modal-title">新增追蹤紀錄</div>
   <div class="fg"><label class="fg-label">日期</label><input class="f-input" type="date" id="tk-date"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">院區</label><input class="f-input" type="text" id="tk-area" value="中正"></div>
-    <div class="fg"><label class="fg-label">類型</label><input class="f-input" type="text" id="tk-type"></div>
+  <div class="fg">
+    <label class="fg-label">院區</label><input type="hidden" id="tk-area-val" value="中正">
+    <div class="chip-row"><button class="chip area on" onclick="APP.tkSelectArea(this,'中正')">中正</button><button class="chip area" onclick="APP.tkSelectArea(this,'右昌')">右昌</button><button class="chip area" onclick="APP.tkSelectArea(this,'診所')">診所</button></div>
   </div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="tk-mrn"></div>
-    <div class="fg"><label class="fg-label">診所ID</label><input class="f-input" type="text" id="tk-clinicid"></div>
+  <div class="fg"><label class="fg-label">病歷號</label><input class="f-input" type="text" id="tk-mrn" placeholder="選填"></div>
+  <div class="fg" id="tk-clinicid-wrap" style="display:none"><label class="fg-label">診所 ID</label><input class="f-input" type="text" id="tk-clinicid" placeholder="診所ID"></div>
+  <div class="fg"><label class="fg-label">病患姓名</label><input class="f-input" type="text" id="tk-name" placeholder="輸入姓名"></div>
+  <div class="fg">
+    <label class="fg-label">類型</label><input type="hidden" id="tk-type-val" value="">
+    <div class="chip-row wrap">
+      <button class="chip" onclick="APP.tkSelectType(this,'Joint')">Joint</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'Sports')">Sports</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'Trauma')">Trauma</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'Spine')">Spine</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'Tumor')">Tumor</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'Hand')">Hand</button>
+      <button class="chip" onclick="APP.tkSelectType(this,'ROI')">ROI</button>
+    </div>
   </div>
-  <div class="fg"><label class="fg-label">姓名</label><input class="f-input" type="text" id="tk-name"></div>
-  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="tk-opname"></div>
-  <div class="fg-row">
-    <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="tk-loc"></div>
-    <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="tk-implant"></div>
-  </div>
-  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="tk-note"></div>
+  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="tk-opname" placeholder="輸入手術名稱"></div>
+  <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="tk-loc" placeholder="如 Rt、Lt、L4-5"></div>
+  <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="tk-implant" placeholder="選填"></div>
+  <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="tk-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-track')">取消</button><button class="btn-save" onclick="APP.saveTrack()">儲存</button></div>
 </div></div>
 

@@ -670,17 +670,45 @@ const APP = {
     if(!m) return;
     if(type==='sx'||type==='track') {
       const pfx = type==='sx'?'es':'et';
-      document.getElementById(pfx+'-date').value   = r.date||'';
-      document.getElementById(pfx+'-area').value   = r.area||'';
+      // Convert date to ISO for date input
+      const dateISO = (r.date||'').replace(/\//g,'-').replace(/(\d{4})-(\d{1,2})-(\d{1,2})/,(_,y,m,d)=>`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+      document.getElementById(pfx+'-date').value = dateISO;
+      // Area chips
+      const areaVal = r.area||'中正';
+      document.getElementById(pfx+'-area-val').value = areaVal;
+      document.querySelectorAll(`#modal-edit-${type==='sx'?'sx':'track'} .chip.area`).forEach(c=>{
+        c.classList.toggle('on', c.textContent.trim()===areaVal);
+      });
+      const cidWrap=document.getElementById(pfx+'-clinicid-wrap');
+      if(cidWrap) cidWrap.style.display=(areaVal==='右昌'||areaVal==='診所')?'':'none';
+      document.getElementById(pfx+'-mrn') && (document.getElementById(pfx+'-mrn').value=r.mrn||'');
+      document.getElementById(pfx+'-clinicid') && (document.getElementById(pfx+'-clinicid').value=r.clinicId||'');
       document.getElementById(pfx+'-name').value   = r.name||'';
-      document.getElementById(pfx+'-type').value   = r.type||'';
-      document.getElementById(pfx+'-opname').value = r.opName||'';
       document.getElementById(pfx+'-loc').value    = r.location||'';
       document.getElementById(pfx+'-implant').value= r.implant||'';
       document.getElementById(pfx+'-note').value   = r.note||'';
-      if(type==='track') {
-        document.getElementById('et-mrn').value      = r.mrn||'';
-        document.getElementById('et-clinicid').value = r.clinicId||'';
+      // Type chips
+      const typeVal=r.type||'';
+      document.getElementById(pfx+'-type-val').value=typeVal;
+      document.querySelectorAll(`#${pfx}-type-chips .chip`).forEach(c=>{
+        c.classList.toggle('on',c.textContent.trim()===typeVal);
+      });
+      if(type==='sx') {
+        // opname select
+        const names=(SHEETS.opCats||[]).filter(c=>c.type.trim()===typeVal).map(c=>c.name);
+        const sel=document.getElementById('es-opname');
+        sel.innerHTML='<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}"${n===r.opName?' selected':''}>${n}</option>`).join('');
+        if(!names.includes(r.opName)&&r.opName){sel.innerHTML+=`<option value="${r.opName}" selected>${r.opName}</option>`;}
+        // bone chips
+        APP.editSelectType({closest:()=>document.getElementById('es-type-chips'),classList:{add:()=>{},remove:()=>{}}},typeVal,'es');
+        setTimeout(()=>{
+          document.querySelectorAll('#es-bone-wrap .bone-toggle').forEach(b=>{
+            if(r.implant&&r.implant.split(' , ').includes(b.dataset.val)){b.classList.add('on');}
+          });
+          document.getElementById('es-bone-val').value=r.implant||'';
+        },50);
+      } else {
+        document.getElementById('et-opname').value=r.opName||'';
       }
     } else if(type==='mat') {
       document.getElementById('em-brand').value   = r.brand||'';
@@ -722,10 +750,12 @@ const APP = {
     const type=this._detailType, r=this._detailData;
     try {
       if(type==='sx') {
-        await SHEETS.updateSurgery(r._row,{date:document.getElementById('es-date').value,area:document.getElementById('es-area').value,name:document.getElementById('es-name').value,type:document.getElementById('es-type').value,opName:document.getElementById('es-opname').value,location:document.getElementById('es-loc').value,implant:document.getElementById('es-implant').value,note:document.getElementById('es-note').value});
+        const esDate=document.getElementById('es-date').value.replace(/-/g,'/');
+        await SHEETS.updateSurgery(r._row,{date:esDate,area:document.getElementById('es-area-val').value,mrn:document.getElementById('es-mrn').value,clinicId:document.getElementById('es-clinicid')?.value||'',name:document.getElementById('es-name').value,type:document.getElementById('es-type-val').value,opName:document.getElementById('es-opname').value,location:document.getElementById('es-loc').value,implant:document.getElementById('es-bone-val').value||document.getElementById('es-implant').value,note:document.getElementById('es-note').value});
         this.closeModal('modal-edit-sx'); this.loadSurgery();
       } else if(type==='track') {
-        await SHEETS.updateTrack(r._row,{date:document.getElementById('et-date').value,area:document.getElementById('et-area').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid').value,name:document.getElementById('et-name').value,type:document.getElementById('et-type').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-implant').value,note:document.getElementById('et-note').value});
+        const etDate=document.getElementById('et-date').value.replace(/-/g,'/');
+        await SHEETS.updateTrack(r._row,{date:etDate,area:document.getElementById('et-area-val').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid')?.value||'',name:document.getElementById('et-name').value,type:document.getElementById('et-type-val').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-implant').value,note:document.getElementById('et-note').value});
         this.closeModal('modal-edit-track'); this.loadTrack();
       } else if(type==='mat') {
         await SHEETS.updateMatRow(r._row,{brand:document.getElementById('em-brand').value,product:document.getElementById('em-product').value,date:document.getElementById('em-date').value,price:document.getElementById('em-price').value,qty:document.getElementById('em-qty').value,done:document.getElementById('em-done-val').value});
@@ -776,7 +806,7 @@ const APP = {
     catch(e){this.toast('❌ '+e.message);}
   },
   async saveTrack() {
-    const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid').value.trim(),name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-implant').value.trim(),note:document.getElementById('tk-note').value.trim()};
+    const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area-val').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid')?.value.trim()||'',name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type-val').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-implant').value.trim(),note:document.getElementById('tk-note').value.trim()};
     if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
     try{await SHEETS.addTrack(d);this.closeModal('modal-track');this.toast('✅ 已儲存');this.loadTrack();}
     catch(e){this.toast('❌ '+e.message);}
@@ -798,6 +828,55 @@ const APP = {
     if(!d.date||!d.product){this.toast('請填入日期和產品');return;}
     try{await SHEETS.addClinic(d);this.closeModal('modal-cli');this.toast('✅ 已儲存');this.loadClinic();}
     catch(e){this.toast('❌ '+e.message);}
+  },
+
+
+  // ── Edit modal area/type chips ──
+  editSelectArea(el, v, pfx) {
+    const wrap = el.closest('.chip-row');
+    wrap.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById(pfx+'-area-val').value = v;
+    const cidWrap = document.getElementById(pfx+'-clinicid-wrap');
+    if(cidWrap) cidWrap.style.display = (v==='右昌'||v==='診所') ? '' : 'none';
+    if(v!=='右昌'&&v!=='診所') { const f=document.getElementById(pfx+'-clinicid'); if(f) f.value=''; }
+  },
+  editSelectType(el, type, pfx) {
+    const wrap = el.closest('.chip-row');
+    wrap.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById(pfx+'-type-val').value = type;
+    // For edit-sx also update bone/opname dropdowns
+    if(pfx==='es') {
+      const sel = document.getElementById('es-opname');
+      const names = (SHEETS.opCats||[]).filter(c=>c.type.trim()===type).map(c=>c.name);
+      sel.innerHTML = '<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+      const bwrap = document.getElementById('es-bone-wrap');
+      const main = (SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
+      const growth = (SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
+      let h='';
+      if(main.length){h+=`<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;h+=main.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');h+=`</div>`;}
+      h+=`<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
+      h+=growth.map(b=>`<button type="button" class="chip bone-toggle" data-val="${b}" onclick="APP.toggleEsBoneChip(this)">${b}</button>`).join('');h+=`</div>`;
+      bwrap.innerHTML=h;
+      document.getElementById('es-bone-val').value='';
+    }
+  },
+  toggleEsBoneChip(btn){ btn.classList.toggle('on'); document.getElementById('es-bone-val').value=[...document.querySelectorAll('#es-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , '); },
+
+  // New track area/type chips
+  tkSelectArea(el, v) {
+    el.closest('.chip-row').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById('tk-area-val').value = v;
+    const cidWrap = document.getElementById('tk-clinicid-wrap');
+    if(cidWrap) cidWrap.style.display = (v==='診所') ? '' : 'none';
+    if(v!=='診所') { const f=document.getElementById('tk-clinicid'); if(f) f.value=''; }
+  },
+  tkSelectType(el, type) {
+    el.closest('.chip-row').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById('tk-type-val').value = type;
   },
 
   // Surgery modal chips
