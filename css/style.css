@@ -234,42 +234,65 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
    Desktop > 1024px : sidebar + main panel
 ───────────────────────────────────────── */
 
-/* ── Tablet (iPad, 600-1024px) ── */
+/* ════════════════════════════════════════
+   RESPONSIVE LAYOUT
+   Mobile  : <600px  → full screen, no margin
+   Tablet  : 600-1024px → centered card, fills width
+   Desktop : 1025px+ → sidebar + app card
+   ════════════════════════════════════════ */
+
+/* ── Tablet (iPad portrait/landscape, 600-1024px) ── */
 @media (min-width: 600px) {
   html, body { background: #d0dcea; overflow: auto; }
 
+  #desktop-layout {
+    display: flex;
+    height: 100dvh;
+    align-items: center;
+    justify-content: center;
+  }
+
   #app {
-    max-width: 520px;
-    margin: 20px auto;
-    height: calc(100dvh - 40px);
+    /* Fill most of the viewport, up to a reasonable max */
+    width: min(680px, calc(100vw - 32px));
+    max-width: none;
+    margin: 16px auto;
+    height: calc(100dvh - 32px);
     border-radius: 20px;
     box-shadow: 0 8px 40px rgba(0,0,0,.18);
     overflow: hidden;
+    flex-shrink: 0;
   }
 
   #auth-screen {
     border-radius: 20px;
-    max-width: 520px;
+    width: min(500px, calc(100vw - 32px));
+    max-width: none;
+    height: auto;
+    min-height: 60dvh;
     margin: auto;
-    height: calc(100dvh - 40px);
   }
+
+  #desktop-panel { display: none; }
 
   .modal-bd { align-items: center; }
   .modal-sheet {
     border-radius: 20px !important;
-    max-width: 500px;
+    max-width: min(600px, calc(100vw - 32px));
     max-height: 85dvh;
   }
 
-  .col-brand { width: 72px; }
-  .col-price { width: 96px; }
+  .col-brand { width: 80px; }
+  .col-price { width: 100px; }
+  .col-qty   { width: 44px; }
+  .col-code  { width: 60px; }
+  .col-area  { width: 48px; }
 }
 
 /* ── Desktop (1025px+) ── */
 @media (min-width: 1025px) {
-  html, body { background: #c8d6e8; overflow: auto; }
+  html, body { background: #c8d6e8; overflow: hidden; }
 
-  /* Outer wrapper: sidebar + app card */
   #desktop-layout {
     display: flex;
     height: 100dvh;
@@ -278,20 +301,21 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   }
 
   #app {
-    max-width: 480px;
-    min-width: 380px;
-    width: 38vw;
+    /* App card: scales with window, min 380, max 560 */
+    width: clamp(380px, 36vw, 560px);
+    max-width: none;
     margin: 24px 0 24px 24px;
     height: calc(100dvh - 48px);
     border-radius: 20px;
     box-shadow: 0 12px 48px rgba(0,0,0,.22);
     flex-shrink: 0;
+    overflow: hidden;
   }
 
-  /* Info panel on the right */
+  /* Info / detail panel on the right */
   #desktop-panel {
     flex: 1;
-    padding: 32px 32px;
+    padding: 28px 32px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -323,13 +347,29 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   .modal-bd { align-items: center; }
   .modal-sheet {
     border-radius: 20px !important;
-    max-width: 460px;
+    max-width: clamp(420px, 38vw, 580px);
     max-height: 85dvh;
   }
 
-  /* Slightly larger fonts on desktop */
+  /* Slightly wider columns on desktop */
   body { font-size: 16px; }
-  .col-brand { width: 76px; }
-  .col-price { width: 92px; }
-  .col-qty   { width: 44px; }
+  .col-brand { width: 80px; }
+  .col-price { width: 96px; }
+  .col-qty   { width: 46px; }
+  .col-code  { width: 60px; }
+  .col-area  { width: 46px; }
+  .col-hosp  { width: 44px; }
+
+  /* Wider table columns for surgery list */
+  .sx-table th, .sx-table td { padding: 11px 14px; font-size: 1rem; }
+}
+
+/* ── Large desktop (1440px+) ── */
+@media (min-width: 1440px) {
+  #app {
+    width: clamp(480px, 32vw, 640px);
+  }
+  .modal-sheet {
+    max-width: clamp(500px, 34vw, 660px);
+  }
 }
