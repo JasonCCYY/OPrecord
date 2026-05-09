@@ -69,8 +69,8 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 /* Tab pages — wrap in a swipe container */
 #tab-swipe-container{flex:1;display:flex;overflow:hidden;position:relative;min-height:0}
 #tab-swipe-inner{display:flex;flex:none;width:300%;height:100%;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform}
+/* Each page is always rendered (flex), translateX controls which is visible */
 .page{flex:0 0 33.333%;width:33.333%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
-.page.active{display:flex}
 
 /* Surgery / Track table */
 .sx-wrap{overflow:auto;flex:1;-webkit-overflow-scrolling:touch;display:block}
@@ -218,6 +218,6 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .bone-chip span{font-size:.92rem;white-space:nowrap}
 
 /* Swipe container for material sub-pages */
-#mat-swipe-container{flex:1;display:flex;overflow:hidden;position:relative;min-height:0;touch-action:pan-y}
+#mat-swipe-container{flex:1;display:flex;overflow:hidden;position:relative;min-height:0;touch-action:pan-y;height:100%}
 #mat-swipe-inner{display:flex;flex:none;width:500%;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform;min-height:0;height:100%}
 .mat-slide{flex:0 0 20%;width:20%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
