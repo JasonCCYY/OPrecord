@@ -84,12 +84,14 @@ const SHEETS = {
       const hRow = await this.read(this.T.op, 'A1:K1');
       const h = (hRow[0] || []).map(x => (x||'').trim());
       const ci = (names, fb) => { for (const n of names) { const i = h.indexOf(n); if (i>=0) return i; } return fb; };
-      const iD=ci(['日期'],0), iA=ci(['院區'],1), iN=ci(['姓名'],2),
-            iT=ci(['類型'],3), iON=ci(['名稱','術式'],4),
-            iL=ci(['部位'],5), iI=ci(['骨材'],6), iNt=ci(['備註'],7);
+      const iD=ci(['日期'],0), iA=ci(['院區'],1), iMR=ci(['病歷號'],2),
+            iCL=ci(['診所ID'],3), iN=ci(['姓名'],4),
+            iT=ci(['類型'],5), iON=ci(['名稱','術式'],6),
+            iL=ci(['部位'],7), iI=ci(['骨材'],8), iNt=ci(['備註'],9);
       const rows = await this.read(this.T.op, 'A2:K500');
       return rows.filter(r=>r[iD]||r[iN]).map((r,i)=>({
-        _row:i+2, date:r[iD]||'', area:r[iA]||'', name:r[iN]||'',
+        _row:i+2, date:r[iD]||'', area:r[iA]||'', mrn:r[iMR]||'',
+        clinicId:r[iCL]||'', name:r[iN]||'',
         type:r[iT]||'', opName:r[iON]||'', location:r[iL]||'',
         implant:r[iI]||'', note:r[iNt]||''
       }));

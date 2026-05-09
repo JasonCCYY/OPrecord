@@ -541,11 +541,11 @@ const APP = {
       this._clinicProds = products;
       // Build product order map for sorting records
       // Fixed sort order for clinic records display
-      const CLINIC_ORDER = ['門診護具','外泌體','PRP','增生','玻尿酸','震波'];
+      // Self-pay items use SELF_ORDER; records use REC_ORDER
+      const REC_ORDER = ['外泌體','PRP','增生','玻尿酸','震波','門診護具'];
       const prodOrder = {};
-      // First apply fixed order, then append anything else from products
-      CLINIC_ORDER.forEach((name,i) => { prodOrder[name] = i; });
-      products.forEach((p) => { if(!(p.name in prodOrder)) prodOrder[p.name] = CLINIC_ORDER.length + Object.keys(prodOrder).length; });
+      REC_ORDER.forEach((name,i) => { prodOrder[name] = i; });
+      products.forEach((p) => { if(!(p.name in prodOrder)) prodOrder[p.name] = REC_ORDER.length + Object.keys(prodOrder).length; });
 
       let html = '';
       // Self-pay price list
@@ -641,7 +641,7 @@ const APP = {
 
     let content = '';
     if(type==='sx'||type==='track') {
-      content = field('日期',r.date)+field('院區',r.area)+(type==='track'?field('病歷號',r.mrn)+field('診所ID',r.clinicId):'')+field('姓名',r.name)+field('類型',r.type)+field('手術名稱',r.opName)+field('部位',r.location)+field('骨材',r.implant)+field('備註',r.note);
+      content = field('日期',r.date)+field('院區',r.area)+field('病歷號',r.mrn)+(type==='track'?field('診所ID',r.clinicId):'')+field('姓名',r.name)+field('類型',r.type)+field('手術名稱',r.opName)+field('部位',r.location)+field('骨材',r.implant)+field('備註',r.note);
     } else if(type==='mat') {
       const cleanP=parseFloat(String(r.price||0).replace(/,/g,''))||0;
       const total=cleanP*(parseInt(r.qty)||1);
