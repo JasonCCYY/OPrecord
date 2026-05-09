@@ -16,16 +16,41 @@ const AUTH = {
             if (resp.error) { console.error(resp); return; }
             this.accessToken = resp.access_token;
             this._save(resp);
+            this._scheduleRefresh(resp.expires_in * 1000);
             APP.onAuthSuccess();
           }
         });
         const saved = this._load();
-        if (saved) { this.accessToken = saved; APP.onAuthSuccess(); }
+        if (saved) {
+          this.accessToken = saved;
+          // Schedule refresh before token expires
+          const d = JSON.parse(localStorage.getItem('ortho_tok') || 'null');
+          if (d) this._scheduleRefresh(d.exp - Date.now());
+          APP.onAuthSuccess();
+        }
         resolve();
       };
       s.onerror = () => resolve();
       document.head.appendChild(s);
     });
+  },
+
+  _scheduleRefresh(msUntilExpiry) {
+    // Refresh 5 minutes before expiry
+    const delay = Math.max(msUntilExpiry - 5 * 60 * 1000, 10000);
+    clearTimeout(this._refreshTimer);
+    this._refreshTimer = setTimeout(() => {
+      console.log('Token refreshing...');
+      this.tokenClient?.requestAccessToken({ prompt: '' });
+    }, delay);
+  },
+
+  // Call this when API returns 401
+  handleExpired() {
+    this.accessToken = null;
+    localStorage.removeItem('ortho_tok');
+    APP.toast('⚠️ 登入已過期，重新驗證中...');
+    setTimeout(() => this.tokenClient?.requestAccessToken({ prompt: '' }), 800);
   },
 
   signIn() { this.tokenClient?.requestAccessToken({ prompt: '' }); },
