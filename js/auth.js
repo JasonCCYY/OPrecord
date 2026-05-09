@@ -14,10 +14,16 @@ const AUTH = {
           scope: this.SCOPES,
           callback: resp => {
             if (resp.error) { console.error(resp); return; }
+            const isFirstLogin = !this.accessToken;
             this.accessToken = resp.access_token;
             this._save(resp);
             this._scheduleRefresh(resp.expires_in * 1000);
-            APP.onAuthSuccess();
+            if (isFirstLogin) {
+              APP.onAuthSuccess();
+            } else {
+              // Token refreshed silently — just reload current page data
+              APP.refresh();
+            }
           }
         });
         const saved = this._load();
@@ -49,8 +55,9 @@ const AUTH = {
   handleExpired() {
     this.accessToken = null;
     localStorage.removeItem('ortho_tok');
-    APP.toast('⚠️ 登入已過期，重新驗證中...');
-    setTimeout(() => this.tokenClient?.requestAccessToken({ prompt: '' }), 800);
+    APP.toast('🔄 重新驗證中...');
+    // Silently re-authenticate without prompt
+    setTimeout(() => this.tokenClient?.requestAccessToken({ prompt: '' }), 300);
   },
 
   signIn() { this.tokenClient?.requestAccessToken({ prompt: '' }); },
