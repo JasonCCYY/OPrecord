@@ -400,10 +400,10 @@ const APP = {
         rows.forEach(r => {
           const cleanP = String(r.price||'').replace(/,/g,'').trim();
           const _si=APP._storeRow(r);
-          html += `<div class="list-row" onclick="APP.openDetailS('selfpay',${_si})">
+          html += `<div class="list-row" style="gap:0" onclick="APP.openDetailS('selfpay',${_si})">
             <span class="col-brand">${r.brand}</span>
-            <span class="col-product">${r.product}</span>
-            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddMat('${r.brand.replace(/'/g,"\\'")}','${r.product.replace(/'/g,"\\'")}','${cleanP}')" title="新增到骨材記錄">＋</button>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;font-weight:500;padding:0 4px">${r.product}</span>
+            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddMat('${r.brand.replace(/'/g,"\\'")}','${r.product.replace(/'/g,"\\'")}','${cleanP}')" title="新增到骨材記錄" style="flex-shrink:0;margin:0 10px">＋</button>
             <span class="col-price">${cleanP?'$'+Number(cleanP).toLocaleString():'-'}</span>
             <span class="col-hosp">${r.hospital||''}</span>
           </div>`;
@@ -437,10 +437,10 @@ const APP = {
         rows.forEach(r => {
           const cleanP = parseFloat(String(r.price||0).replace(/,/g,''))||0;
           const _si=APP._storeRow(r);
-          html += `<div class="list-row" onclick="APP.openDetailS('opcode',${_si})">
+          html += `<div class="list-row" style="gap:0" onclick="APP.openDetailS('opcode',${_si})">
             <span class="col-code">${r.code}</span>
-            <span class="col-product" title="${r.name}">${r.name}</span>
-            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddCode('${r.name.replace(/'/g,"\\'")}','${r.code}','${r.price}','${r.area}')" title="新增到代碼紀錄">＋</button>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;font-weight:500;padding:0 4px" title="${r.name}">${r.name}</span>
+            <button class="add-center-btn" onclick="event.stopPropagation();APP.qAddCode('${r.name.replace(/'/g,"\\'")}','${r.code}','${r.price}','${r.area}')" title="新增到代碼紀錄" style="flex-shrink:0;margin:0 10px">＋</button>
             <span class="col-price">${cleanP?'$'+cleanP.toLocaleString():''}</span>
           </div>`;
         });
@@ -559,10 +559,9 @@ const APP = {
       });
       sortedProds.forEach(r => {
         const cleanP = String(r.price||'').replace(/,/g,'').trim();
-        html += `<div class="list-row">
-          <span style="font-weight:600;font-size:1rem;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
-          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" >＋</button>
-          <span style="flex:1"></span>
+        html += `<div class="list-row" style="gap:0">
+          <span style="font-weight:600;font-size:1rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
+          <button class="add-center-btn" onclick="APP.qAddClinic('${r.name.replace(/'/g,"\\'")}','${cleanP}')" title="快速新增門診記錄" style="flex-shrink:0;margin:0 10px">＋</button>
           <span class="col-price" style="flex:none">${cleanP?'$'+Number(cleanP).toLocaleString():'免費'}</span>
         </div>`;
       });
