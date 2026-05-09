@@ -213,10 +213,15 @@ const APP = {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         dragging = false;
+        // Only activate edge swipe within 30px of screen edge
+        const EDGE = 30;
+        const sw = window.innerWidth;
+        const isEdge = startX <= EDGE || startX >= sw - EDGE;
+        if(!isEdge) { startX = null; return; } // ignore non-edge touches
       }, {passive: true});
 
       pg.addEventListener('touchmove', e => {
-        if(e.touches.length !== 1) return;
+        if(e.touches.length !== 1 || startX === null) return;
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
         if(!dragging && Math.abs(dy) > Math.abs(dx) + 8) return;
@@ -233,7 +238,7 @@ const APP = {
       }, {passive: true});
 
       pg.addEventListener('touchend', e => {
-        if(!dragging) return;
+        if(!dragging || startX === null) return;
         const dx = e.changedTouches[0].clientX - startX;
         const inner = document.getElementById('tab-swipe-inner');
         if(inner) inner.style.transition = '';
