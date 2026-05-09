@@ -66,7 +66,10 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 
 /* Content */
 #content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-.page{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+/* Tab pages — wrap in a swipe container */
+#tab-swipe-container{flex:1;display:flex;overflow:hidden;position:relative;min-height:0}
+#tab-swipe-inner{display:flex;flex:none;width:300%;height:100%;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform}
+.page{flex:0 0 33.333%;width:33.333%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .page.active{display:flex}
 
 /* Surgery / Track table */

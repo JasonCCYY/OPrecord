@@ -39,7 +39,7 @@ const APP = {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     SHEETS.loadCategories();
-    this.switchTab('surgery');
+    this.switchTab('surgery', false);
     // After 3s, refresh current view from network
     setTimeout(() => this.refresh(), 3000);
   },
@@ -91,18 +91,28 @@ const APP = {
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => this.switchTab(b.dataset.tab)));
   },
 
-  switchTab(tab) {
+  _TAB_IDX: {material:0, surgery:1, clinic:2},
+
+  switchTab(tab, animate=true) {
     this.tab = tab;
     this._clearStore();
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
-    document.getElementById('sub-mat').style.display  = tab==='material' ? 'flex' : 'none';
-    document.getElementById('sub-sx').style.display   = tab==='surgery'  ? 'flex' : 'none';
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('sub-mat').style.display = tab==='material' ? 'flex' : 'none';
+    document.getElementById('sub-sx').style.display  = tab==='surgery'  ? 'flex' : 'none';
     document.getElementById('fab').style.display = tab==='surgery' ? 'flex' : 'none';
     document.getElementById('hdr-add-btn').style.display = 'none';
-    if (tab==='surgery')  { document.getElementById('pg-surgery').classList.add('active');  this.switchSx(this.subSx); }
-    else if(tab==='material') { document.getElementById('pg-material').classList.add('active'); this.switchMat(this.subMat); }
-    else if(tab==='clinic') { document.getElementById('pg-clinic').classList.add('active'); this.loadClinic(); }
+    // Slide animation
+    const inner = document.getElementById('tab-swipe-inner');
+    const idx = this._TAB_IDX[tab] ?? 1;
+    if(inner) {
+      if(!animate) inner.style.transition = 'none';
+      inner.style.transform = `translateX(${-idx * 33.333}%)`;
+      if(!animate) setTimeout(() => inner.style.transition = '', 0);
+    }
+    // Load content
+    if(tab==='surgery')  this.switchSx(this.subSx);
+    else if(tab==='material') this.switchMat(this.subMat);
+    else if(tab==='clinic')   this.loadClinic();
   },
 
   bindSubTabs() {
@@ -211,28 +221,47 @@ const APP = {
         const dy = e.touches[0].clientY - startY;
         if(!dragging && Math.abs(dy) > Math.abs(dx) + 8) return;
         if(!dragging && Math.abs(dx) > 8) dragging = true;
+        if(!dragging) return;
+        // Live drag preview on tab-swipe-inner
+        const inner = document.getElementById('tab-swipe-inner');
+        if(inner) {
+          const curIdx = this._TAB_IDX[this.tab] ?? 1;
+          const pct = (dx / pg.offsetWidth) * 33.333;
+          inner.style.transition = 'none';
+          inner.style.transform = `translateX(${-curIdx * 33.333 + pct}%)`;
+        }
       }, {passive: true});
 
       pg.addEventListener('touchend', e => {
         if(!dragging) return;
         const dx = e.changedTouches[0].clientX - startX;
-        if(Math.abs(dx) < 60) { dragging = false; return; }
+        const inner = document.getElementById('tab-swipe-inner');
+        if(inner) inner.style.transition = '';
+        if(Math.abs(dx) < 60) {
+          // Snap back
+          const curIdx = this._TAB_IDX[this.tab] ?? 1;
+          if(inner) inner.style.transform = `translateX(${-curIdx * 33.333}%)`;
+          dragging = false; return;
+        }
         const curTab = this.tab;
         const curIdx = TAB_ORDER.indexOf(curTab);
         if(curIdx < 0) { dragging = false; return; }
         if(dx < 0) {
-          // Left swipe → next tab
           const nextTab = TAB_ORDER[curIdx + 1];
           if(nextTab) this.switchTab(nextTab);
+          else {
+            const ci = this._TAB_IDX[this.tab] ?? 1;
+            if(inner) inner.style.transform = `translateX(${-ci * 33.333}%)`;
+          }
         } else {
-          // Right swipe → prev tab
-          // surgery right → go to material/estimate (last mat slide)
           if(curTab === 'surgery') {
             this.switchTab('material');
-            // Go to estimate (last slide)
             setTimeout(() => this.switchMat('estimate'), 50);
           } else if(curTab === 'clinic') {
             this.switchTab('surgery');
+          } else {
+            const ci = this._TAB_IDX[this.tab] ?? 1;
+            if(inner) inner.style.transform = `translateX(${-ci * 33.333}%)`;
           }
         }
         dragging = false;
