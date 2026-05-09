@@ -17,16 +17,7 @@
 <div class="loading-ov" id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:.95rem">Ortho Record</div></div>
 
 <div id="auth-screen">
-  <div class="auth-logo">
-    <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="7" fill="#1a7fd4" opacity=".9"/>
-      <circle cx="48" cy="12" r="7" fill="#1a7fd4" opacity=".9"/>
-      <circle cx="12" cy="48" r="7" fill="#1a7fd4" opacity=".9"/>
-      <circle cx="48" cy="48" r="7" fill="#1a7fd4" opacity=".9"/>
-      <rect x="18" y="26" width="24" height="8" rx="4" fill="#1a7fd4"/>
-      <rect x="26" y="18" width="8" height="24" rx="4" fill="#1a7fd4"/>
-    </svg>
-  </div>
+  <div class="auth-logo" style="padding:0;overflow:hidden;border:none;box-shadow:none;background:transparent"><img src="icons/icon-192.png" style="width:96px;height:96px;border-radius:22px;display:block"></div>
   <div class="auth-title">Ortho Record</div>
   <div class="auth-sub">骨科手術紀錄管理系統<br>請使用 Google 帳號登入</div>
   <button class="btn-google" onclick="AUTH.signIn()">
@@ -82,7 +73,7 @@
         <div class="sx-wrap">
           <table class="sx-table">
             <thead><tr>
-              <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
+              <th>日期</th><th>姓名</th><th>類型</th>
               <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
             </tr></thead>
             <tbody id="sx-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
@@ -93,7 +84,7 @@
         <div class="sx-wrap">
           <table class="sx-table">
             <thead><tr>
-              <th>日期</th><th>院區</th><th>姓名</th><th>類型</th>
+              <th>日期</th><th>姓名</th><th>類型</th>
               <th>名稱</th><th>部位</th><th>骨材</th><th>備註</th>
             </tr></thead>
             <tbody id="track-list-body"><tr><td colspan="8" class="load-msg">載入中...</td></tr></tbody>
@@ -190,10 +181,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="3" rx="1"/><path d="M16 2h2a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h2"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="12" y2="18"/></svg>醫材
     </button>
     <button class="tab-btn active" data-tab="surgery">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21l9.5-9.5"/><path d="M21 3c0 0-7 1-10.5 4.5S7.5 15 7.5 15L21 3z"/><path d="M15 9l-4 4"/></svg>手術紀錄
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>手術紀錄
     </button>
     <button class="tab-btn" data-tab="clinic">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 2l4 4"/><path d="M17 3l4 4-9 9H8v-4l9-9z"/><path d="M11 11l2 2"/><path d="M8 16l-5 5"/><path d="M3 21h3"/></svg>門診
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m18 2 4 4"/><path d="m17 3 4 4-9 9H8v-4Z"/><path d="m11 11 2 2"/><path d="M5 19 3 21"/><path d="M9 15 3 21"/><path d="M14 4l4 4"/></svg>門診
     </button>
   </div>
 
