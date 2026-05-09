@@ -106,7 +106,7 @@ const APP = {
     const idx = this._TAB_IDX[tab] ?? 1;
     if(inner) {
       if(!animate) inner.style.transition = 'none';
-      inner.style.transform = `translateX(${-idx * 33.333}%)`;
+      inner.style.transform = `translateX(${-idx * 100/3}%)`;
       if(!animate) setTimeout(() => inner.style.transition = '', 0);
     }
     // Load content
@@ -233,7 +233,7 @@ const APP = {
           const curIdx = this._TAB_IDX[this.tab] ?? 1;
           const pct = (dx / pg.offsetWidth) * 33.333;
           inner.style.transition = 'none';
-          inner.style.transform = `translateX(${-curIdx * 33.333 + pct}%)`;
+          inner.style.transform = `translateX(${-curIdx * 100/3 + pct}%)`;
         }
       }, {passive: true});
 
@@ -245,7 +245,7 @@ const APP = {
         if(Math.abs(dx) < 60) {
           // Snap back
           const curIdx = this._TAB_IDX[this.tab] ?? 1;
-          if(inner) inner.style.transform = `translateX(${-curIdx * 33.333}%)`;
+          if(inner) inner.style.transform = `translateX(${-curIdx * 100/3}%)`;
           dragging = false; return;
         }
         const curTab = this.tab;
@@ -256,7 +256,7 @@ const APP = {
           if(nextTab) this.switchTab(nextTab);
           else {
             const ci = this._TAB_IDX[this.tab] ?? 1;
-            if(inner) inner.style.transform = `translateX(${-ci * 33.333}%)`;
+            if(inner) inner.style.transform = `translateX(${-ci * 100/3}%)`;
           }
         } else {
           if(curTab === 'surgery') {
@@ -266,7 +266,7 @@ const APP = {
             this.switchTab('surgery');
           } else {
             const ci = this._TAB_IDX[this.tab] ?? 1;
-            if(inner) inner.style.transform = `translateX(${-ci * 33.333}%)`;
+            if(inner) inner.style.transform = `translateX(${-ci * 100/3}%)`;
           }
         }
         dragging = false;
@@ -802,7 +802,11 @@ const APP = {
         // bone chips — init directly
         APP.initEsBoneChips(typeVal, r.implant||'');
       } else {
-        document.getElementById('et-opname').value=r.opName||'';
+        // Populate et-opname select
+        const etNames=(SHEETS.opCats||[]).filter(c=>c.type.trim()===typeVal).map(c=>c.name);
+        const etSel=document.getElementById('et-opname');
+        etSel.innerHTML='<option value="">選擇手術名稱</option>'+etNames.map(n=>`<option value="${n}"${n===r.opName?' selected':''}>${n}</option>`).join('');
+        if(!etNames.includes(r.opName)&&r.opName){etSel.innerHTML+=`<option value="${r.opName}" selected>${r.opName}</option>`;}
         APP.initEtBoneChips(typeVal, r.implant||'');
       }
     } else if(type==='mat') {
@@ -847,11 +851,11 @@ const APP = {
     try {
       if(type==='sx') {
         const esDate=document.getElementById('es-date').value.replace(/-/g,'/');
-        await SHEETS.updateSurgery(r._row,{date:esDate,area:document.getElementById('es-area-val').value,mrn:document.getElementById('es-mrn').value,clinicId:document.getElementById('es-clinicid')?.value||'',name:document.getElementById('es-name').value,type:document.getElementById('es-type-val').value,opName:document.getElementById('es-opname').value,location:document.getElementById('es-loc').value,implant:document.getElementById('es-bone-val').value||document.getElementById('es-implant').value,note:document.getElementById('es-note').value});
+        await SHEETS.updateSurgery(r._row,{date:esDate,area:document.getElementById('es-area-val').value,mrn:document.getElementById('es-mrn').value,clinicId:document.getElementById('es-clinicid')?.value||'',name:document.getElementById('es-name').value,type:document.getElementById('es-type-val').value,opName:document.getElementById('es-opname').value,location:document.getElementById('es-loc').value,implant:document.getElementById('es-bone-val').value||'',note:document.getElementById('es-note').value});
         this.closeModal('modal-edit-sx'); this.loadSurgery();
       } else if(type==='track') {
         const etDate=document.getElementById('et-date').value.replace(/-/g,'/');
-        await SHEETS.updateTrack(r._row,{date:etDate,area:document.getElementById('et-area-val').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid')?.value||'',name:document.getElementById('et-name').value,type:document.getElementById('et-type-val').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-bone-val')?.value||document.getElementById('et-implant')?.value||'',note:document.getElementById('et-note').value});
+        await SHEETS.updateTrack(r._row,{date:etDate,area:document.getElementById('et-area-val').value,mrn:document.getElementById('et-mrn').value,clinicId:document.getElementById('et-clinicid')?.value||'',name:document.getElementById('et-name').value,type:document.getElementById('et-type-val').value,opName:document.getElementById('et-opname').value,location:document.getElementById('et-loc').value,implant:document.getElementById('et-bone-val')?.value||'',note:document.getElementById('et-note').value});
         this.closeModal('modal-edit-track'); this.loadTrack();
       } else if(type==='mat') {
         await SHEETS.updateMatRow(r._row,{brand:document.getElementById('em-brand').value,product:document.getElementById('em-product').value,date:document.getElementById('em-date').value,price:document.getElementById('em-price').value,qty:document.getElementById('em-qty').value,done:document.getElementById('em-done-val').value});
@@ -902,7 +906,7 @@ const APP = {
     catch(e){this.toast('❌ '+e.message);}
   },
   async saveTrack() {
-    const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area-val').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid')?.value.trim()||'',name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type-val').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-implant').value.trim(),note:document.getElementById('tk-note').value.trim()};
+    const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area-val').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid')?.value.trim()||'',name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type-val').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-bone-val')?.value||'',note:document.getElementById('tk-note').value.trim()};
     if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
     try{await SHEETS.addTrack(d);this.closeModal('modal-track');this.toast('✅ 已儲存');this.loadTrack();}
     catch(e){this.toast('❌ '+e.message);}
@@ -949,6 +953,9 @@ const APP = {
       sel.innerHTML = '<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
       APP.initEsBoneChips(type, '');
     } else if(pfx==='et') {
+      const etNames2=(SHEETS.opCats||[]).filter(c=>c.type.trim()===type).map(c=>c.name);
+      const etSel2=document.getElementById('et-opname');
+      if(etSel2) etSel2.innerHTML='<option value="">選擇手術名稱</option>'+etNames2.map(n=>`<option value="${n}">${n}</option>`).join('');
       APP.initEtBoneChips(type, '');
     }
   },
@@ -1003,6 +1010,33 @@ const APP = {
     el.closest('.chip-row').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
     el.classList.add('on');
     document.getElementById('tk-type-val').value = type;
+    // Update opname select
+    const sel = document.getElementById('tk-opname');
+    if(sel) {
+      const names = (SHEETS.opCats||[]).filter(c=>c.type.trim()===type).map(c=>c.name);
+      sel.innerHTML = '<option value="">選擇手術名稱</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+    }
+    // Update bone chips
+    APP.initTkBoneChips(type, '');
+  },
+  toggleTkBoneChip(btn){ btn.classList.toggle('on'); document.getElementById('tk-bone-val').value=[...document.querySelectorAll('#tk-bone-wrap .bone-toggle.on')].map(c=>c.dataset.val).join(' , '); },
+  initTkBoneChips(type, implant) {
+    const bwrap = document.getElementById('tk-bone-wrap');
+    if(!bwrap) return;
+    const main = (SHEETS.boneCats||[]).filter(c=>c.type.trim()===type).map(c=>c.bone);
+    const growth = (SHEETS.growthFactors&&SHEETS.growthFactors.length)?SHEETS.growthFactors:['漢森柏0.5','PRP 15K','PRP 36K','羊膜22S','瑟若美'];
+    const selected = implant ? implant.split(' , ').map(s=>s.trim()) : [];
+    let h = '';
+    if(main.length) {
+      h += `<div class="bone-section">骨材</div><div class="chip-row wrap" style="margin-top:6px">`;
+      h += main.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleTkBoneChip(this)">${b}</button>`).join('');
+      h += `</div>`;
+    }
+    h += `<div class="bone-section" style="margin-top:10px">生長因子</div><div class="chip-row wrap" style="margin-top:6px">`;
+    h += growth.map(b=>`<button type="button" class="chip bone-toggle${selected.includes(b)?' on':''}" data-val="${b}" onclick="APP.toggleTkBoneChip(this)">${b}</button>`).join('');
+    h += `</div>`;
+    bwrap.innerHTML = h;
+    if(document.getElementById('tk-bone-val')) document.getElementById('tk-bone-val').value = implant;
   },
 
   // Surgery modal chips

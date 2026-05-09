@@ -270,7 +270,7 @@
       <button class="chip" onclick="APP.editSelectType(this,'ROI','et')">ROI</button>
     </div>
   </div>
-  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="et-opname" placeholder="輸入手術名稱"></div>
+  <div class="fg"><label class="fg-label">手術名稱</label><select class="f-sel" id="et-opname"><option value="">請先選擇類型</option></select></div>
   <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="et-loc" placeholder="如 Rt、Lt、L4-5"></div>
   <div class="fg">
     <label class="fg-label">骨材</label><input type="hidden" id="et-bone-val">
@@ -408,9 +408,12 @@
       <button class="chip" onclick="APP.tkSelectType(this,'ROI')">ROI</button>
     </div>
   </div>
-  <div class="fg"><label class="fg-label">手術名稱</label><input class="f-input" type="text" id="tk-opname" placeholder="輸入手術名稱"></div>
+  <div class="fg"><label class="fg-label">手術名稱</label><select class="f-sel" id="tk-opname"><option value="">請先選擇類型</option></select></div>
   <div class="fg"><label class="fg-label">部位</label><input class="f-input" type="text" id="tk-loc" placeholder="如 Rt、Lt、L4-5"></div>
-  <div class="fg"><label class="fg-label">骨材</label><input class="f-input" type="text" id="tk-implant" placeholder="選填"></div>
+  <div class="fg">
+    <label class="fg-label">骨材</label><input type="hidden" id="tk-bone-val">
+    <div class="bone-grid" id="tk-bone-wrap"><div style="color:var(--muted);font-size:.88rem">請先選擇類型</div></div>
+  </div>
   <div class="fg"><label class="fg-label">備註</label><input class="f-input" type="text" id="tk-note" placeholder="選填"></div>
   <div class="modal-actions"><button class="btn-cancel" onclick="APP.closeModal('modal-track')">取消</button><button class="btn-save" onclick="APP.saveTrack()">儲存</button></div>
 </div></div>
