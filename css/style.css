@@ -78,13 +78,18 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .sx-table thead{position:sticky;top:0;z-index:10;background:var(--bg)}
 .sx-table th{padding:9px 12px;text-align:left;font-size:.82rem;font-weight:700;color:var(--muted);white-space:nowrap;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
 .sx-month-row td{padding:7px 14px;background:var(--bg);font-size:.9rem;font-weight:700;color:var(--txt2);border-bottom:1px solid var(--border)}
+.sx-month-row td:first-child{position:sticky;left:0;z-index:5;background:var(--bg)}
 .sx-data-row{cursor:pointer}
 .sx-data-row td{padding:13px 12px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;vertical-align:middle;font-size:.95rem}
 .sx-data-row:hover td{background:var(--card)}
 .sx-data-row:active td{background:var(--elevated)}
 .sx-date{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--txt2)}
 .sx-area{font-size:.85rem;color:var(--muted)}
-.sx-name{font-weight:700;min-width:52px}
+.sx-name{font-weight:700;min-width:64px;position:sticky;left:0;z-index:4;background:var(--surface);box-shadow:2px 0 4px rgba(0,0,0,.06)}
+/* sx-name in header row also sticky */
+.sx-table thead .th-name{position:sticky;left:0;z-index:11;background:var(--bg)}
+/* month row needs to cover the sticky column */
+.sx-month-row td{position:relative;z-index:3}
 .sx-opname{min-width:80px;color:var(--txt2)}
 .sx-loc{max-width:100px;overflow:hidden;text-overflow:ellipsis;color:var(--txt2)}
 .sx-implant{color:var(--green);font-size:.85rem;min-width:80px}
