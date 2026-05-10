@@ -3,6 +3,8 @@ const AUTH = {
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets',
   tokenClient: null,
   accessToken: null,
+  _refreshing: false,      // prevent concurrent refresh
+  _lastExpired: 0,         // debounce handleExpired
 
   async init() {
     return new Promise(resolve => {
@@ -24,6 +26,7 @@ const AUTH = {
               // Token refreshed silently — just reload current page data
               APP.refresh();
             }
+            AUTH._refreshing = false;
           }
         });
         const saved = this._load();
@@ -53,11 +56,15 @@ const AUTH = {
 
   // Call this when API returns 401
   handleExpired() {
+    // Debounce: ignore if called within 15 seconds of last call
+    const now = Date.now();
+    if(this._refreshing || now - this._lastExpired < 15000) return;
+    this._refreshing = true;
+    this._lastExpired = now;
     this.accessToken = null;
     localStorage.removeItem('ortho_tok');
-    APP.toast('🔄 重新驗證中...');
-    // Silently re-authenticate without prompt
-    setTimeout(() => this.tokenClient?.requestAccessToken({ prompt: '' }), 300);
+    // Silently re-authenticate without prompt (no toast spam)
+    this.tokenClient?.requestAccessToken({ prompt: '' });
   },
 
   signIn() { this.tokenClient?.requestAccessToken({ prompt: '' }); },

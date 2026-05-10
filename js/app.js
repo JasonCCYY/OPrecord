@@ -41,7 +41,7 @@ const APP = {
     SHEETS.loadCategories();
     this.switchTab('surgery', false);
     // After 3s, refresh current view from network
-    setTimeout(() => this.refresh(), 3000);
+    setTimeout(() => { if(AUTH.ok && !AUTH._refreshing) this.refresh(); }, 3000);
   },
 
   // ── Helpers ──
