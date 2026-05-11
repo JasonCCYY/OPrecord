@@ -29,11 +29,6 @@ const APP = {
     }
   },
 
-  // Show cached data from localStorage immediately (before auth)
-  _showCachedAll() {
-    // We'll render from cache when each page is first visited
-    // This is handled inside each load function via SHEETS.cached()
-  },
 
   onAuthSuccess() {
     document.getElementById('auth-screen').style.display = 'none';
