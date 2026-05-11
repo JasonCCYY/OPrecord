@@ -303,6 +303,9 @@ const APP = {
       const modalId = modal.id;
       if(modalId !== 'modal-detail') return; // only detail card
 
+      // The scrollable content inside the sheet
+      const scrollEl = sheet; // sheet itself is overflow-y:auto
+
       sheet.addEventListener('touchstart', e => {
         startY = e.touches[0].clientY;
         dragging = false;
@@ -310,17 +313,21 @@ const APP = {
 
       sheet.addEventListener('touchmove', e => {
         const dy = e.touches[0].clientY - startY;
-        if(dy > 10) {
+        const scrollTop = sheet.scrollTop;
+        // Only activate close-swipe when at top AND pulling down
+        if(dy > 0 && scrollTop <= 2) {
           dragging = true;
-          sheet.style.transform = `translateY(${Math.max(0,dy)}px)`;
+          sheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
           sheet.style.transition = 'none';
+          // Don't prevent scroll since passive:true — sheet won't scroll further up
         }
+        // If not at top: normal scroll, no close gesture
       }, {passive: true});
 
       sheet.addEventListener('touchend', e => {
         const dy = e.changedTouches[0].clientY - startY;
         sheet.style.transition = '';
-        if(dy > 80) {
+        if(dragging && dy > 80) {
           sheet.style.transform = '';
           APP.closeModal(modalId);
         } else {
