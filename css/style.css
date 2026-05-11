@@ -388,16 +388,3 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;
   letter-spacing: -.01em;
 }
-
-/* ── Bottom-strip swipe hint (醫材分頁) ── */
-.bottom-swipe-hint{
-  position:absolute;bottom:0;left:0;right:0;
-  height:28px;line-height:28px;
-  text-align:center;font-size:.72rem;
-  color:var(--muted);
-  background:linear-gradient(transparent,var(--bg) 55%);
-  pointer-events:none;z-index:10;opacity:.75;
-  letter-spacing:.3px;
-}
-
-#pg-material{position:relative;}

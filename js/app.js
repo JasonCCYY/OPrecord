@@ -3,8 +3,6 @@ const APP = {
   tab: 'surgery',
   subMat: 'matRec',
   subSx: 'sxList',
-  searchActive: false,
-  searchQuery: '',
   // material slide index: 0=matRec,1=selfPay,2=opCode,3=codeRec,4=estimate
   matSlideIdx: 0,
   MAT_SUBS: ['matRec','selfPay','opCode','codeRec','estimate'],
@@ -19,7 +17,6 @@ const APP = {
     this.bindTabs();
     this.bindSubTabs();
     this.bindMatSwipe();
-    this.bindMatBottomSwipe();
     this.bindTabSwipe();
     this.bindModalSwipe();
     document.getElementById('fab').addEventListener('click', () => this.fabClick());
@@ -297,40 +294,7 @@ const APP = {
 
 
 
-  // ── 醫材: bottom 60px strip swipe → switch sub-tab (不干擾表格捲動) ──
-  bindMatBottomSwipe() {
-    const pg = document.getElementById('pg-material');
-    if(!pg) return;
-    let sx = 0, sy = 0, drag = false, inZone = false;
 
-    pg.addEventListener('touchstart', e => {
-      if(e.touches.length !== 1) return;
-      sx = e.touches[0].clientX;
-      sy = e.touches[0].clientY;
-      drag = false;
-      const r = pg.getBoundingClientRect();
-      inZone = (sy > r.bottom - 60);
-    }, {passive: true});
-
-    pg.addEventListener('touchmove', e => {
-      if(e.touches.length !== 1 || !inZone) return;
-      const dx = Math.abs(e.touches[0].clientX - sx);
-      const dy = Math.abs(e.touches[0].clientY - sy);
-      if(!drag && dy > dx + 10) return;  // mostly vertical → ignore
-      if(!drag && dx > 10) drag = true;
-    }, {passive: true});
-
-    pg.addEventListener('touchend', e => {
-      if(!drag || !inZone) { drag = false; inZone = false; return; }
-      drag = false; inZone = false;
-      const dx = e.changedTouches[0].clientX - sx;
-      if(Math.abs(dx) < 55) return;
-      const subs = this.MAT_SUBS;
-      const ci = subs.indexOf(this.subMat);
-      if(dx < 0 && ci < subs.length - 1) this.switchMat(subs[ci + 1]);
-      else if(dx > 0 && ci > 0)          this.switchMat(subs[ci - 1]);
-    }, {passive: true});
-  },
 
   // ── Swipe down to close any open modal ──
   bindModalSwipe() {
@@ -391,17 +355,99 @@ const APP = {
     }
   },
 
-  // ── Search ──
-  toggleSearch() {
-    this.searchActive = !this.searchActive;
-    const bar = document.getElementById('search-bar');
-    bar.style.display = this.searchActive ? 'flex' : 'none';
-    if(this.searchActive) document.getElementById('search-input').focus();
-    else { this.searchQuery=''; this.refresh(); }
+  // ── Search (Home Record style modal) ──
+  openSearch() {
+    document.getElementById('modal-search').classList.add('open');
+    setTimeout(() => document.getElementById('search-input').focus(), 100);
+    document.getElementById('search-results').innerHTML = '<div class="load-msg" style="color:var(--muted)">輸入關鍵字搜尋</div>';
+    document.getElementById('search-input').value = '';
   },
-  onSearch(v) {
-    this.searchQuery = v.toLowerCase();
-    this.refresh();
+  closeSearch() {
+    document.getElementById('modal-search').classList.remove('open');
+  },
+  async doSearch(q) {
+    const el = document.getElementById('search-results');
+    q = q.trim();
+    if(!q) { el.innerHTML = '<div class="load-msg" style="color:var(--muted)">輸入關鍵字搜尋</div>'; return; }
+    el.innerHTML = '<div class="load-msg">搜尋中...</div>';
+    try {
+      const kw = q.toLowerCase();
+      const results = [];
+      // Search op records (surgery)
+      const ops = await SHEETS.loadOpRecords();
+      const opHits = ops.filter(r => [r.date,r.name,r.mrn,r.type,r.opName,r.location,r.implant,r.note].some(v=>String(v||'').toLowerCase().includes(kw))).slice(0,30);
+      // Search mat records
+      const mats = await SHEETS.loadMatRecords();
+      const matHits = mats.filter(r => [r.brand,r.product,r.date].some(v=>String(v||'').toLowerCase().includes(kw))).slice(0,30);
+      // Search code records
+      const codes = await SHEETS.loadCodeRecords();
+      const codeHits = codes.filter(r => [r.name,r.code,r.area,r.date].some(v=>String(v||'').toLowerCase().includes(kw))).slice(0,30);
+      // Search clinic records
+      const clinic = await SHEETS.loadClinicRecords();
+      const clinicHits = clinic.filter(r => [r.product,r.date].some(v=>String(v||'').toLowerCase().includes(kw))).slice(0,30);
+      // Search track records
+      const tracks = await SHEETS.loadTrackRecords();
+      const trackHits = tracks.filter(r => [r.name,r.mrn,r.type,r.opName,r.location,r.date,r.area].some(v=>String(v||'').toLowerCase().includes(kw))).slice(0,30);
+
+      if(!opHits.length && !matHits.length && !codeHits.length && !clinicHits.length && !trackHits.length) {
+        el.innerHTML = `<div class="load-msg">找不到「${q}」</div>`; return;
+      }
+      let html = '';
+      if(opHits.length) {
+        html += `<div class="list-month-hdr" style="top:0">手術紀錄（${opHits.length}筆）</div>`;
+        opHits.forEach(r => {
+          html += `<div class="list-row">
+            <span class="dot-ph"></span>
+            <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
+            <span class="col-price">${r.date.substring(5)||''}</span>
+          </div>`;
+        });
+      }
+      if(trackHits.length) {
+        html += `<div class="list-month-hdr" style="top:0">追蹤（${trackHits.length}筆）</div>`;
+        trackHits.forEach(r => {
+          html += `<div class="list-row">
+            <span class="dot-ph"></span>
+            <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
+            <span class="col-price" style="color:var(--txt2)">${r.date.substring(0,7)||''}</span>
+          </div>`;
+        });
+      }
+      if(matHits.length) {
+        html += `<div class="list-month-hdr" style="top:0">醫材記錄（${matHits.length}筆）</div>`;
+        matHits.forEach(r => {
+          const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          html += `<div class="list-row">
+            <span class="col-brand">${r.brand}</span>
+            <span class="col-product">${r.product}</span>
+            <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
+          </div>`;
+        });
+      }
+      if(codeHits.length) {
+        html += `<div class="list-month-hdr" style="top:0">代碼紀錄（${codeHits.length}筆）</div>`;
+        codeHits.forEach(r => {
+          const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          html += `<div class="list-row">
+            <span class="col-product">${r.name}</span>
+            <span class="col-code">${r.code}</span>
+            <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
+          </div>`;
+        });
+      }
+      if(clinicHits.length) {
+        html += `<div class="list-month-hdr" style="top:0">門診記錄（${clinicHits.length}筆）</div>`;
+        clinicHits.forEach(r => {
+          const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
+          html += `<div class="list-row">
+            <span class="col-product">${r.product}</span>
+            <span class="col-qty">${r.qty}</span>
+            <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
+          </div>`;
+        });
+      }
+      el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div class="load-msg">搜尋失敗: '+e.message+'</div>'; }
   },
 
   // ── Refresh ──
@@ -415,10 +461,7 @@ const APP = {
     else this.loadClinic();
   },
 
-  filterBySearch(recs, fields) {
-    if(!this.searchQuery) return recs;
-    return recs.filter(r => fields.some(f => (r[f]||'').toLowerCase().includes(this.searchQuery)));
-  },
+
 
   // ── Surgery ──
   async loadSurgery() {
@@ -426,7 +469,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let recs = await SHEETS.loadOpRecords();
-      recs = this.filterBySearch(recs, ['name','type','opName','location','implant','area']);
       const sorted = [...recs].sort((a,b) => {
         const ma=this.getMonth(a.date), mb=this.getMonth(b.date);
         if(ma!==mb) return mb.localeCompare(ma);
@@ -471,7 +513,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let recs = await SHEETS.loadTrackRecords();
-      recs = this.filterBySearch(recs, ['name','type','opName','location','area','mrn']);
       if(!recs.length) { el.innerHTML = `<tr><td colspan="8">${this.empty()}</td></tr>`; return; }
       // Group by 院區, sort newest first within each group
       const areaOrder = ['中正','右昌','診所'];
@@ -510,7 +551,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let recs = await SHEETS.loadMatRecords();
-      recs = this.filterBySearch(recs, ['brand','product']);
       if(!recs.length) { el.innerHTML = this.empty(); return; }
       let html = '';
       this.groupByMonth(recs).forEach(([m, rows]) => {
@@ -614,7 +654,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let recs = await SHEETS.loadCodeRecords();
-      recs = this.filterBySearch(recs, ['name','code','area']);
       if(!recs.length) { el.innerHTML = this.empty(); return; }
       let html = '';
       this.groupByMonth(recs).forEach(([m,rows]) => {
