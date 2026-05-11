@@ -11,9 +11,11 @@ const APP = {
   // ── Init ──
   async init() {
     document.getElementById('loading').style.display = 'flex';
-    // Show cached data immediately for snappy feel
-    this._showCachedAll();
-    await AUTH.init();
+    try {
+      await AUTH.init();
+    } catch(e) {
+      console.error('AUTH.init failed:', e);
+    }
     this.bindTabs();
     this.bindSubTabs();
     this.bindMatSwipe();

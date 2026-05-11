@@ -1,4 +1,4 @@
-const VER = 'ortho-v3';
+const VER = 'ortho-v10';
 const CACHE = ['./','./index.html','./css/style.css','./js/auth.js','./js/sheets.js','./js/app.js','./manifest.json'];
 
 self.addEventListener('install', e => {
