@@ -83,7 +83,7 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .sx-data-row td{padding:13px 12px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;vertical-align:middle;font-size:.95rem}
 .sx-data-row:hover td{background:var(--card)}
 .sx-data-row:active td{background:var(--elevated)}
-.sx-date{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--txt2)}
+.sx-date{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:.85rem;color:var(--txt2);letter-spacing:-.01em}
 .sx-area{font-size:.85rem;color:var(--muted)}
 .sx-name{font-weight:700;min-width:64px;position:sticky;left:0;z-index:4;background:var(--surface);box-shadow:2px 0 4px rgba(0,0,0,.06)}
 /* sx-name in header row also sticky */
@@ -128,19 +128,19 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 /* Column widths — no horizontal scroll on standard phone (375px) */
 .col-brand  {width:58px;font-size:.85rem;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .col-product{flex:1;font-size:1rem;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.col-qty    {width:36px;text-align:center;font-size:.95rem;color:var(--txt2);flex-shrink:0}
-.col-price  {width:80px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:.88rem;color:var(--green);font-weight:700;flex-shrink:0}
+.col-qty    {width:38px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:.97rem;color:var(--txt2);font-weight:600;letter-spacing:-.01em;flex-shrink:0}
+.col-price  {width:84px;text-align:right;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:.95rem;color:var(--green);font-weight:700;letter-spacing:-.01em;flex-shrink:0}
 .col-code   {width:52px;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--muted);flex-shrink:0}
 .col-area   {width:38px;font-size:.82rem;color:var(--muted);text-align:right;flex-shrink:0}
 .col-hosp   {width:36px;font-size:.82rem;color:var(--muted);text-align:right;flex-shrink:0}
-.col-date   {width:42px;font-size:.82rem;color:var(--txt2);flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.col-date   {width:44px;font-size:.83rem;color:var(--txt2);flex-shrink:0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;letter-spacing:-.01em}
 
 /* New-dot / placeholder */
 .new-dot{flex-shrink:0;width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px rgba(245,158,11,.25)}
 .dot-ph {flex-shrink:0;width:9px;height:9px}
 
 /* Sub-total */
-.sub-total{display:block;font-size:.8rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.sub-total{display:block;font-size:.82rem;color:var(--muted);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-weight:500;letter-spacing:-.01em;margin-top:2px}
 
 /* Add center button */
 .add-center-btn{flex-shrink:0;width:32px;height:32px;border:1.5px solid var(--acc-bd);background:var(--acc-lt);color:var(--accent);border-radius:50%;font-size:1.1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
@@ -156,7 +156,7 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .est-table{border-collapse:collapse;font-size:.95rem;min-width:100%}
 .est-table thead th{padding:10px 14px;background:var(--bg);font-size:.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border);white-space:nowrap;text-align:right;position:sticky;top:0;z-index:10}
 .est-table thead th:first-child{text-align:left;position:sticky;left:0;z-index:11;background:var(--bg)}
-.est-table td{padding:13px 14px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;text-align:right;font-family:'JetBrains Mono',monospace;font-size:.95rem}
+.est-table td{padding:13px 14px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;text-align:right;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:.97rem;letter-spacing:-.01em}
 .est-table tr td:first-child{font-family:'Noto Sans TC',sans-serif;font-weight:700;color:var(--txt2);text-align:left;position:sticky;left:0;background:var(--surface);z-index:5;font-size:.92rem}
 .est-table .est-total-row td{color:var(--accent);font-weight:700}
 
@@ -164,7 +164,7 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 .clinic-section-hdr{padding:10px 16px 7px;font-size:1rem;font-weight:700;color:var(--txt);background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9}
 
 /* Month badge */
-.month-badge{background:var(--acc-lt);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:2px 8px;border-radius:20px;border:1px solid var(--acc-bd);margin-left:8px}
+.month-badge{background:var(--acc-lt);color:var(--accent);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:.82rem;font-weight:700;letter-spacing:-.01em;padding:3px 10px;border-radius:20px;border:1px solid var(--acc-bd);margin-left:8px}
 
 /* FAB */
 .fab{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);right:16px;width:52px;height:52px;background:var(--accent);border:none;border-radius:50%;color:white;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 16px rgba(26,127,212,.38);display:none;align-items:center;justify-content:center;z-index:50}
@@ -377,4 +377,12 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   .modal-sheet {
     max-width: clamp(500px, 34vw, 660px);
   }
+}
+
+/* ── Number typography (Home Record style) ──
+   System font renders crisper on iPhone than JetBrains Mono
+   Applied to all price/amount displays ── */
+.num {
+  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;
+  letter-spacing: -.01em;
 }
