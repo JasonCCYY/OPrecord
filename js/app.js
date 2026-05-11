@@ -766,7 +766,6 @@ const APP = {
 
       // Records section
       html += `<div class="clinic-section-hdr">門診記錄</div>`;
-      let
       this.groupByMonth(records).forEach(([m,rows]) => {
         const mTotal = rows.reduce((s,r)=>{
           return s+(parseFloat(String(r.price||0).replace(/,/g,''))||0)*(parseInt(r.qty)||1);
