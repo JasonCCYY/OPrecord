@@ -591,7 +591,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let items = await SHEETS.loadMatProducts();
-      items = this.filterBySearch(items, ['brand','product']);
       if(!items.length) { el.innerHTML = this.empty(); return; }
       const groups = {};
       items.forEach(r => { (groups[r.brand]=groups[r.brand]||[]).push(r); });
@@ -620,7 +619,6 @@ const APP = {
     el.innerHTML = this.loading();
     try {
       let items = await SHEETS.loadOpCodes();
-      items = this.filterBySearch(items, ['code','name','area']);
       if(!items.length) { el.innerHTML = this.empty(); return; }
       const areaOrder = ['中正','右昌'];
       const groups = {};
@@ -768,8 +766,8 @@ const APP = {
 
       // Records section
       html += `<div class="clinic-section-hdr">門診記錄</div>`;
-      let filteredRecs = this.filterBySearch(records, ['product','date']);
-      this.groupByMonth(filteredRecs).forEach(([m,rows]) => {
+      let
+      this.groupByMonth(records).forEach(([m,rows]) => {
         const mTotal = rows.reduce((s,r)=>{
           return s+(parseFloat(String(r.price||0).replace(/,/g,''))||0)*(parseInt(r.qty)||1);
         },0);
