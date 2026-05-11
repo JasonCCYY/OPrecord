@@ -19,6 +19,7 @@ const APP = {
     this.bindTabs();
     this.bindSubTabs();
     this.bindMatSwipe();
+    this.bindMatBottomSwipe();
     this.bindTabSwipe();
     this.bindModalSwipe();
     document.getElementById('fab').addEventListener('click', () => this.fabClick());
@@ -181,8 +182,11 @@ const APP = {
             // Still within mat slides
             this.switchMat(this.MAT_SUBS[startIdx + 1]);
           } else {
-            // At estimate (last mat slide) → go to surgery
-            this.switchTab('surgery');
+            // At last sub-page: only switch big tab if edge swipe
+            const EDGE = 30, sw = window.innerWidth;
+            const isEdge = startX <= EDGE || startX >= sw - EDGE;
+            if(isEdge) this.switchTab('surgery');
+            else this._applySlide(startIdx);
           }
         } else {
           // Right swipe (→ prev)
@@ -190,8 +194,11 @@ const APP = {
             // Still within mat slides
             this.switchMat(this.MAT_SUBS[startIdx - 1]);
           } else {
-            // At matRec (first slide, idx=0) → go to clinic
-            this.switchTab('clinic');
+            // At first sub-page: only switch big tab if edge swipe
+            const EDGE2 = 30, sw2 = window.innerWidth;
+            const isEdge2 = startX <= EDGE2 || startX >= sw2 - EDGE2;
+            if(isEdge2) this.switchTab('clinic');
+            else this._applySlide(startIdx);
           }
         }
       } else {
@@ -288,6 +295,42 @@ const APP = {
     makeSwipeHandler('pg-clinic',  false); // full swipe: no horizontal scroll
   },
 
+
+
+  // ── 醫材: bottom 60px strip swipe → switch sub-tab (不干擾表格捲動) ──
+  bindMatBottomSwipe() {
+    const pg = document.getElementById('pg-material');
+    if(!pg) return;
+    let sx = 0, sy = 0, drag = false, inZone = false;
+
+    pg.addEventListener('touchstart', e => {
+      if(e.touches.length !== 1) return;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      drag = false;
+      const r = pg.getBoundingClientRect();
+      inZone = (sy > r.bottom - 60);
+    }, {passive: true});
+
+    pg.addEventListener('touchmove', e => {
+      if(e.touches.length !== 1 || !inZone) return;
+      const dx = Math.abs(e.touches[0].clientX - sx);
+      const dy = Math.abs(e.touches[0].clientY - sy);
+      if(!drag && dy > dx + 10) return;  // mostly vertical → ignore
+      if(!drag && dx > 10) drag = true;
+    }, {passive: true});
+
+    pg.addEventListener('touchend', e => {
+      if(!drag || !inZone) { drag = false; inZone = false; return; }
+      drag = false; inZone = false;
+      const dx = e.changedTouches[0].clientX - sx;
+      if(Math.abs(dx) < 55) return;
+      const subs = this.MAT_SUBS;
+      const ci = subs.indexOf(this.subMat);
+      if(dx < 0 && ci < subs.length - 1) this.switchMat(subs[ci + 1]);
+      else if(dx > 0 && ci > 0)          this.switchMat(subs[ci - 1]);
+    }, {passive: true});
+  },
 
   // ── Swipe down to close any open modal ──
   bindModalSwipe() {
