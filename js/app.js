@@ -98,7 +98,7 @@ const APP = {
     document.getElementById('sub-mat').style.display = tab==='material' ? 'flex' : 'none';
     document.getElementById('sub-sx').style.display  = tab==='surgery'  ? 'flex' : 'none';
     document.getElementById('fab').style.display = tab==='surgery' ? 'flex' : 'none';
-    document.getElementById('hdr-add-btn').style.display = 'none';
+    // hdr-add-btn removed from header
     // Slide animation
     const inner = document.getElementById('tab-swipe-inner');
     const idx = this._TAB_IDX[tab] ?? 1;
@@ -128,7 +128,7 @@ const APP = {
       this._applySlide(idx);
     }
     document.getElementById('fab').style.display = 'none'; // FAB only for surgery
-    document.getElementById('hdr-add-btn').style.display = 'none';
+    // hdr-add-btn removed from header
     const loaders = { matRec:()=>this.loadMatRec(), selfPay:()=>this.loadSelfPay(), opCode:()=>this.loadOpCode(), codeRec:()=>this.loadCodeRec(), estimate:()=>this.loadEstimate() };
     loaders[sub]?.();
   },
