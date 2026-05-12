@@ -231,7 +231,6 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 
 
 /* Desktop panel hidden by default */
-#desktop-panel{display:none}
 #desktop-layout{display:contents}
 
 /* ─────────────────────────────────────────
@@ -279,8 +278,6 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
     margin: 0;
   }
 
-  #desktop-panel { display: none; }
-
   .modal-bd { align-items: center; }
   .modal-sheet {
     border-radius: 20px !important;
@@ -302,15 +299,15 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   #desktop-layout {
     display: flex;
     height: 100dvh;
-    align-items: stretch;
-    gap: 0;
+    align-items: center;
+    justify-content: center;
   }
 
   #app {
-    /* App card: scales with window, min 380, max 560 */
-    width: clamp(380px, 36vw, 560px);
+    /* App card: centered, scales with window */
+    width: clamp(400px, 38vw, 580px);
     max-width: none;
-    margin: 24px 0 24px 24px;
+    margin: 24px auto;
     height: calc(100dvh - 48px);
     border-radius: 20px;
     box-shadow: 0 12px 48px rgba(0,0,0,.22);
@@ -319,15 +316,6 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   }
 
   /* Info / detail panel on the right */
-  #desktop-panel {
-    flex: 1;
-    padding: 28px 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
-    color: #2a3f58;
-  }
 
   #desktop-panel h2 {
     font-size: 1.4rem;
