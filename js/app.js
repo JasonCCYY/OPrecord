@@ -35,6 +35,9 @@ const APP = {
     document.getElementById('app').style.display = 'flex';
     SHEETS.loadCategories();
     this.switchTab('surgery', false);
+    // 背景預載其他常用頁面，讓切換時即時顯示
+    setTimeout(() => { if(AUTH.ok) SHEETS.loadTrackRecords().catch(()=>{}); }, 1500);
+    setTimeout(() => { if(AUTH.ok) SHEETS.loadClinicRecords().catch(()=>{}); }, 2500);
     // After 3s, refresh current view from network
     setTimeout(() => { if(AUTH.ok && !AUTH._refreshing) this.refresh(); }, 3000);
   },

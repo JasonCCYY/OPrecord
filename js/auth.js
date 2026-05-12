@@ -29,6 +29,7 @@ const AUTH = {
             AUTH._refreshing = false;
           }
         });
+        this._bindVisibility();
         const saved = this._load();
         if (saved) {
           this.accessToken = saved;
@@ -68,6 +69,24 @@ const AUTH = {
   },
 
   signIn() { this.tokenClient?.requestAccessToken({ prompt: '' }); },
+
+  // ── 從背景切回前台時靜默刷新 token ──
+  _bindVisibility() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (this._refreshing) return;
+      if (this.accessToken) {
+        // token 存在：檢查是否快到期（5分鐘內到期就提前刷）
+        const d = JSON.parse(localStorage.getItem('ortho_tok') || 'null');
+        if (d && d.exp - Date.now() < 5 * 60 * 1000) {
+          this.tokenClient?.requestAccessToken({ prompt: '' });
+        }
+      } else {
+        // token 不存在：嘗試靜默重新驗證（不彈視窗）
+        this.tokenClient?.requestAccessToken({ prompt: '' });
+      }
+    });
+  },
 
   signOut() {
     if (this.accessToken) google.accounts.oauth2.revoke(this.accessToken);

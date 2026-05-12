@@ -19,15 +19,23 @@ const SHEETS = {
   hdrs() { return { Authorization: `Bearer ${AUTH.accessToken}` }; },
 
   // ── Cache helpers ──
+  _STALE_TTL: 30 * 60 * 1000,  // 30 分鐘：超過視為 stale，返回快取並強制背景刷新
   saveCache(key, data) {
     try { localStorage.setItem('ortho_' + key, JSON.stringify({ t: Date.now(), d: data })); } catch(e) {}
   },
-  loadCache(key) {
+  loadCacheRaw(key) {
     try {
       const raw = localStorage.getItem('ortho_' + key);
       if (!raw) return null;
-      return JSON.parse(raw).d;
+      const obj = JSON.parse(raw);
+      const age = Date.now() - obj.t;
+      if (age > 24 * 60 * 60 * 1000) { localStorage.removeItem('ortho_' + key); return null; } // 24hr 強制過期
+      return { data: obj.d, stale: age > this._STALE_TTL };
     } catch(e) { return null; }
+  },
+  loadCache(key) {
+    const r = this.loadCacheRaw(key);
+    return r ? r.data : null;
   },
 
   // ── Core read/write ──
@@ -76,12 +84,16 @@ const SHEETS = {
 
   // ── Cached loaders ──
   async cached(key, loader) {
-    const cached = this.loadCache(key);
-    if (cached) {
-      // Return cache immediately, then refresh in background
-      setTimeout(() => loader().then(d => this.saveCache(key, d)).catch(() => {}), 100);
-      return cached;
+    const entry = this.loadCacheRaw(key);
+    if (entry) {
+      if (entry.stale) {
+        // Stale（超過30分鐘）：立即回傳舊資料 + 背景強制刷新
+        loader().then(d => this.saveCache(key, d)).catch(() => {});
+      }
+      // Fresh（30分鐘內）：直接回傳快取，不發網路請求
+      return entry.data;
     }
+    // 無快取：等待網路
     const data = await loader();
     this.saveCache(key, data);
     return data;
