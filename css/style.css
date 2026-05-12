@@ -259,9 +259,8 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   }
 
   #app {
-    /* Fill most of the viewport, up to a reasonable max */
-    width: min(680px, calc(100vw - 32px));
-    max-width: none;
+    width: calc(100vw - 32px);
+    max-width: 900px;
     margin: 16px auto;
     height: calc(100dvh - 32px);
     border-radius: 20px;
@@ -304,13 +303,13 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   }
 
   #app {
-    /* App card: centered, scales with window */
-    width: clamp(400px, 38vw, 580px);
-    max-width: none;
-    margin: 24px auto;
-    height: calc(100dvh - 48px);
+    /* Fill the browser window like Home app */
+    width: calc(100vw - 48px);
+    max-width: 1200px;
+    margin: 20px auto;
+    height: calc(100dvh - 40px);
     border-radius: 20px;
-    box-shadow: 0 12px 48px rgba(0,0,0,.22);
+    box-shadow: 0 8px 40px rgba(0,0,0,.18);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -341,7 +340,7 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   .modal-bd { align-items: center; }
   .modal-sheet {
     border-radius: 20px !important;
-    max-width: clamp(420px, 38vw, 580px);
+    max-width: min(720px, calc(100vw - 80px));
     max-height: 85dvh;
   }
 
@@ -361,10 +360,11 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 /* ── Large desktop (1440px+) ── */
 @media (min-width: 1440px) {
   #app {
-    width: clamp(480px, 32vw, 640px);
+    width: calc(100vw - 80px);
+    max-width: 1400px;
   }
   .modal-sheet {
-    max-width: clamp(500px, 34vw, 660px);
+    max-width: 700px;
   }
 }
 
