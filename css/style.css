@@ -32,12 +32,12 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
 #app{display:flex;flex-direction:column;height:100dvh;width:100%;background:var(--bg)}
 
 /* Auth */
-#auth-screen{display:none;flex-direction:column;align-items:center;justify-content:center;height:100dvh;background:linear-gradient(150deg,#dbeafe,#f0f4f8);padding:2rem;gap:1.6rem}
+#auth-screen{display:none;flex-direction:column;align-items:center;justify-content:center;height:100dvh;background:linear-gradient(160deg,#e8eef8 0%,#d4e0f0 50%,#c8d8ec 100%);padding:2rem;gap:1.4rem}
 .auth-logo{width:96px;height:96px;background:white;border:2px solid var(--acc-bd);border-radius:22px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
 .auth-logo svg{width:60px;height:60px}
-.auth-title{font-size:2rem;font-weight:700;color:var(--accent)}
-.auth-sub{font-size:.95rem;color:var(--txt2);text-align:center;line-height:1.7}
-.btn-google{display:flex;align-items:center;gap:12px;background:white;color:#333;border:1px solid #ddd;border-radius:var(--r);padding:14px 28px;font-size:1rem;font-weight:500;cursor:pointer;box-shadow:var(--shadow)}
+.auth-title{font-size:2.2rem;font-weight:700;color:var(--accent);letter-spacing:-.02em}
+.auth-sub{font-size:.95rem;color:var(--txt2);text-align:center;line-height:1.8}
+.btn-google{display:flex;align-items:center;gap:14px;background:white;color:#333;border:none;border-radius:14px;padding:15px 32px;font-size:1rem;font-weight:500;cursor:pointer;box-shadow:0 2px 16px rgba(0,0,0,.10);min-width:260px;justify-content:center}
 .btn-google img{width:22px}
 
 /* Header */
@@ -272,12 +272,11 @@ html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--bg)
   }
 
   #auth-screen {
-    border-radius: 20px;
-    width: min(500px, calc(100vw - 32px));
+    width: 100%;
     max-width: none;
-    height: auto;
-    min-height: 60dvh;
-    margin: auto;
+    height: 100dvh;
+    border-radius: 0;
+    margin: 0;
   }
 
   #desktop-panel { display: none; }
