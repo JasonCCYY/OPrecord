@@ -399,11 +399,14 @@ const APP = {
       if(!opHits.length && !matHits.length && !codeHits.length && !clinicHits.length && !trackHits.length) {
         el.innerHTML = `<div class="load-msg">找不到「${q}」</div>`; return;
       }
+      // Store search hits for click-to-detail
+      this._clearStore();
       let html = '';
       if(opHits.length) {
         html += `<div class="list-month-hdr" style="top:0">手術紀錄（${opHits.length}筆）</div>`;
         opHits.forEach(r => {
-          html += `<div class="list-row">
+          const _si = APP._storeRow(r);
+          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('sx',${_si})" style="cursor:pointer">
             <span class="dot-ph"></span>
             <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
             <span class="col-price">${r.date.substring(5)||''}</span>
@@ -413,7 +416,8 @@ const APP = {
       if(trackHits.length) {
         html += `<div class="list-month-hdr" style="top:0">追蹤（${trackHits.length}筆）</div>`;
         trackHits.forEach(r => {
-          html += `<div class="list-row">
+          const _si = APP._storeRow(r);
+          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('track',${_si})" style="cursor:pointer">
             <span class="dot-ph"></span>
             <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
             <span class="col-price" style="color:var(--txt2)">${r.date.substring(0,7)||''}</span>
@@ -423,8 +427,9 @@ const APP = {
       if(matHits.length) {
         html += `<div class="list-month-hdr" style="top:0">醫材記錄（${matHits.length}筆）</div>`;
         matHits.forEach(r => {
+          const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row">
+          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('mat',${_si})" style="cursor:pointer">
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -434,8 +439,9 @@ const APP = {
       if(codeHits.length) {
         html += `<div class="list-month-hdr" style="top:0">代碼紀錄（${codeHits.length}筆）</div>`;
         codeHits.forEach(r => {
+          const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row">
+          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('coderec',${_si})" style="cursor:pointer">
             <span class="col-product">${r.name}</span>
             <span class="col-code">${r.code}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -445,8 +451,9 @@ const APP = {
       if(clinicHits.length) {
         html += `<div class="list-month-hdr" style="top:0">門診記錄（${clinicHits.length}筆）</div>`;
         clinicHits.forEach(r => {
+          const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row">
+          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('clinic',${_si})" style="cursor:pointer">
             <span class="col-product">${r.product}</span>
             <span class="col-qty">${r.qty}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -1002,16 +1009,60 @@ const APP = {
 
   // ── New record save ──
   async saveOp() {
+    if(this._savingOp) return; // prevent double submit
     const d={date:document.getElementById('s-date').value.replace(/-/g,'/'),area:document.getElementById('s-area-val').value,mrn:document.getElementById('s-mrn').value.trim(),clinicId:document.getElementById('s-clinicid')?.value.trim()||'',name:document.getElementById('s-name').value.trim(),type:document.getElementById('s-type-val').value,opName:document.getElementById('s-opname').value,location:document.getElementById('s-location').value.trim(),implant:document.getElementById('s-bone-val').value,note:document.getElementById('s-note').value.trim()};
     if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
-    try{await SHEETS.addOp(d);this.closeModal('modal-op');this.toast('✅ 已儲存');this.loadSurgery();}
+    this._savingOp = true;
+    try{
+      await SHEETS.addOp(d);
+      this.closeModal('modal-op');
+      this.toast('✅ 已儲存');
+      this.loadSurgery();
+      // Clear form fields for next entry
+      document.getElementById('s-mrn').value='';
+      if(document.getElementById('s-clinicid')) document.getElementById('s-clinicid').value='';
+      document.getElementById('s-name').value='';
+      document.getElementById('s-location').value='';
+      document.getElementById('s-note').value='';
+      document.getElementById('s-bone-val').value='';
+      document.getElementById('s-bone-wrap').innerHTML='<div style="color:var(--muted);font-size:.88rem">請先選擇類型</div>';
+      document.getElementById('s-opname').innerHTML='<option value="">請先選擇類型</option>';
+      document.getElementById('s-type-val').value='Joint';
+      document.querySelectorAll('#modal-op .chip:not(.area)').forEach(c=>{c.classList.remove('on');if(c.textContent.trim()==='Joint')c.classList.add('on');});
+      document.querySelectorAll('#modal-op .chip.area').forEach(c=>{c.classList.toggle('on',c.textContent.trim()==='中正');});
+      document.getElementById('s-area-val').value='中正';
+      if(document.getElementById('s-clinicid-wrap')) document.getElementById('s-clinicid-wrap').style.display='none';
+    }
     catch(e){this.toast('❌ '+e.message);}
+    finally{this._savingOp = false;}
   },
   async saveTrack() {
+    if(this._savingTrack) return; // prevent double submit
     const d={date:document.getElementById('tk-date').value.replace(/-/g,'/'),area:document.getElementById('tk-area-val').value,mrn:document.getElementById('tk-mrn').value.trim(),clinicId:document.getElementById('tk-clinicid')?.value.trim()||'',name:document.getElementById('tk-name').value.trim(),type:document.getElementById('tk-type-val').value,opName:document.getElementById('tk-opname').value.trim(),location:document.getElementById('tk-loc').value.trim(),implant:document.getElementById('tk-bone-val')?.value||'',note:document.getElementById('tk-note').value.trim()};
     if(!d.date||!d.name){this.toast('請填入日期和姓名');return;}
-    try{await SHEETS.addTrack(d);this.closeModal('modal-track');this.toast('✅ 已儲存');this.loadTrack();}
+    this._savingTrack = true;
+    try{
+      await SHEETS.addTrack(d);
+      this.closeModal('modal-track');
+      this.toast('✅ 已儲存');
+      this.loadTrack();
+      // Clear form fields for next entry
+      document.getElementById('tk-mrn').value='';
+      if(document.getElementById('tk-clinicid')) document.getElementById('tk-clinicid').value='';
+      document.getElementById('tk-name').value='';
+      document.getElementById('tk-loc').value='';
+      document.getElementById('tk-note').value='';
+      if(document.getElementById('tk-bone-val')) document.getElementById('tk-bone-val').value='';
+      if(document.getElementById('tk-bone-wrap')) document.getElementById('tk-bone-wrap').innerHTML='<div style="color:var(--muted);font-size:.88rem">請先選擇類型</div>';
+      if(document.getElementById('tk-opname')) document.getElementById('tk-opname').innerHTML='<option value="">選擇手術名稱</option>';
+      document.getElementById('tk-type-val').value='Joint';
+      document.querySelectorAll('#modal-track .chip:not(.area)').forEach(c=>{c.classList.remove('on');if(c.textContent.trim()==='Joint')c.classList.add('on');});
+      document.querySelectorAll('#modal-track .chip.area').forEach(c=>{c.classList.toggle('on',c.textContent.trim()==='中正');});
+      document.getElementById('tk-area-val').value='中正';
+      if(document.getElementById('tk-clinicid-wrap')) document.getElementById('tk-clinicid-wrap').style.display='none';
+    }
     catch(e){this.toast('❌ '+e.message);}
+    finally{this._savingTrack = false;}
   },
   async saveMat() {
     const d={date:document.getElementById('m-date').value.replace(/-/g,'/'),brand:document.getElementById('m-brand').value.trim(),product:document.getElementById('m-product').value.trim(),qty:document.getElementById('m-qty').value,price:document.getElementById('m-price').value};
