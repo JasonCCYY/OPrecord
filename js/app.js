@@ -406,7 +406,7 @@ const APP = {
         html += `<div class="list-month-hdr" style="top:0">手術紀錄（${opHits.length}筆）</div>`;
         opHits.forEach(r => {
           const _si = APP._storeRow(r);
-          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('sx',${_si})" style="cursor:pointer">
+          html += `<div class="list-row" onclick="APP._detailFromSearch=true;APP.openDetailS('sx',${_si})" style="cursor:pointer">
             <span class="dot-ph"></span>
             <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
             <span class="col-price">${r.date.substring(5)||''}</span>
@@ -417,7 +417,7 @@ const APP = {
         html += `<div class="list-month-hdr" style="top:0">追蹤（${trackHits.length}筆）</div>`;
         trackHits.forEach(r => {
           const _si = APP._storeRow(r);
-          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('track',${_si})" style="cursor:pointer">
+          html += `<div class="list-row" onclick="APP._detailFromSearch=true;APP.openDetailS('track',${_si})" style="cursor:pointer">
             <span class="dot-ph"></span>
             <span class="col-product">${r.name} <span style="color:var(--muted);font-size:.82rem">· ${r.opName||''}</span></span>
             <span class="col-price" style="color:var(--txt2)">${r.date.substring(0,7)||''}</span>
@@ -429,7 +429,7 @@ const APP = {
         matHits.forEach(r => {
           const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('mat',${_si})" style="cursor:pointer">
+          html += `<div class="list-row" onclick="APP._detailFromSearch=true;APP.openDetailS('mat',${_si})" style="cursor:pointer">
             <span class="col-brand">${r.brand}</span>
             <span class="col-product">${r.product}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -441,7 +441,7 @@ const APP = {
         codeHits.forEach(r => {
           const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('coderec',${_si})" style="cursor:pointer">
+          html += `<div class="list-row" onclick="APP._detailFromSearch=true;APP.openDetailS('coderec',${_si})" style="cursor:pointer">
             <span class="col-product">${r.name}</span>
             <span class="col-code">${r.code}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -453,7 +453,7 @@ const APP = {
         clinicHits.forEach(r => {
           const _si = APP._storeRow(r);
           const p = parseFloat(String(r.price||0).replace(/,/g,''))||0;
-          html += `<div class="list-row" onclick="APP.closeSearch();APP.openDetailS('clinic',${_si})" style="cursor:pointer">
+          html += `<div class="list-row" onclick="APP._detailFromSearch=true;APP.openDetailS('clinic',${_si})" style="cursor:pointer">
             <span class="col-product">${r.product}</span>
             <span class="col-qty">${r.qty}</span>
             <span class="col-price">${p?'$'+p.toLocaleString():''}</span>
@@ -873,6 +873,7 @@ const APP = {
   },
   openEdit() {
     const type = this._detailType, r = this._detailData;
+    this._detailFromSearch = false; // 進入編輯不回到搜尋
     this.closeModal('modal-detail');
     try {
     const editModalMap = { sx:'modal-edit-sx', track:'modal-edit-track', mat:'modal-edit-mat', selfpay:'modal-edit-selfpay', opcode:'modal-edit-opcode', coderec:'modal-edit-coderec', clinic:'modal-edit-clinic' };
@@ -995,6 +996,7 @@ const APP = {
     try {
       const tab=SHEETS.T[tabMap[type]],cols=colMap[type];
       await SHEETS.deleteRow(tab,r._row,cols[0],cols[1],cacheMap[type]);
+      this._detailFromSearch = false; // 刪除後不回到搜尋
       this.closeModal('modal-detail');
       this.toast('🗑 已刪除');
       this.refresh();
@@ -1240,7 +1242,14 @@ const APP = {
       document.querySelectorAll(`#${id} input[type="date"]`).forEach(el=>el.value=this.todayISO());
     }
   },
-  closeModal(id){document.getElementById(id).classList.remove('open');},
+  closeModal(id){
+    document.getElementById(id).classList.remove('open');
+    // 若詳細卡片是從搜尋開啟的，關閉後自動重開搜尋
+    if(id==='modal-detail' && this._detailFromSearch) {
+      this._detailFromSearch = false;
+      document.getElementById('modal-search').classList.add('open');
+    }
+  },
 
   toast(msg){
     const el=document.getElementById('toast');
